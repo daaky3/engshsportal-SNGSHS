@@ -1195,7 +1195,13 @@
     
     updateLoadingStatus('Loading required libraries...');
 
-    // ===== FIREBASE INITIALIZATION (Wrapped in Async IIFE) =====
+    // ===== FIREBASE INITIALIZATION (Global Scope) =====
+    // Declare Firebase variables globally
+    let firebaseApp = null;
+    let firebaseAuth = null;
+    let firebaseDb = null;
+
+    // Async initialization IIFE
     (async function initializeFirebase() {
       const firebaseConfig = {
         apiKey: "AIzaSyCbd6nFbdypbzQo2ZuYUo1UCBhShXkB_dk",
@@ -1206,11 +1212,6 @@
         appId: "1:215579304323:web:53834338c8d6e7f25456b6",
         measurementId: "G-NDFMDLF2XY"
       };
-
-      // Initialize Firebase
-      let firebaseApp = null;
-      let firebaseAuth = null;
-      let firebaseDb = null;
 
       try {
         // Wait for Firebase to load
@@ -1224,6 +1225,7 @@
           throw new Error('Firebase SDK failed to load from CDN');
         }
 
+        // Initialize Firebase (using global variables)
         firebaseApp = firebase.initializeApp(firebaseConfig);
         firebaseAuth = firebase.auth();
         firebaseDb = firebase.firestore();
@@ -1233,12 +1235,13 @@
         console.error('❌ Firebase initialization error:', error);
         updateLoadingStatus('Firebase error - see console');
       }
+    })();
 
-      // Create helper for authentication
-      window.firebaseAuthHelpers = {
-        async signUp(email, password) {
-          try {
-            if (!firebaseAuth) throw new Error('Firebase not initialized');
+    // Create helper for authentication (after async init)
+    window.firebaseAuthHelpers = {
+      async signUp(email, password) {
+        try {
+          if (!firebaseAuth) throw new Error('Firebase not initialized');
           const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
           console.log('✅ Sign up successful:', userCred.user.email);
           return { success: true, user: userCred.user, uid: userCred.user.uid };
@@ -1289,7 +1292,6 @@
     };
 
     console.log('%c🚀 Firebase Auth Helpers Ready', 'color: #10b981; font-size: 12px; font-weight: bold;');
-    })(); // Close the async IIFE
 </script>
 
 <div id="reportPortalContainer" style="display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; overflow-x: hidden; overflow-y: auto; box-sizing: border-box;">

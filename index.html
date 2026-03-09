@@ -1285,19 +1285,21 @@
             <p style="margin: 0; color: #666; font-size: 14px;">Portal System - Admin Login</p>
         </div>
 
-        <!-- Login Form -->
-        <form id="loginForm" onsubmit="handleLogin(event)" style="display: flex; flex-direction: column; gap: 15px;">
+        <!-- Login/Signup Tabs -->
+        <div style="display: flex; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
+            <button id="loginTab" onclick="switchTab('login')" style="flex: 1; padding: 12px; background: none; border: none; color: #1e3a8a; font-weight: 600; cursor: pointer; border-bottom: 3px solid #1e3a8a;">Login</button>
+            <button id="signupTab" onclick="switchTab('signup')" style="flex: 1; padding: 12px; background: none; border: none; color: #999; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s;">Sign Up</button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm" style="display: flex; flex-direction: column; gap: 15px;">
             <div>
-                <label style="display: block; font-weight: 600; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">Staff ID</label>
+                <label style="display: block; font-weight: 600; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">Email Address</label>
                 <input 
-                    type="text" 
-                    id="loginUsername" 
-                    placeholder="Enter your staff ID" 
+                    type="email" 
+                    id="loginEmail" 
+                    placeholder="Enter your email" 
                     style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;"
-                    onmouseover="this.style.borderColor='#d1d5db'"
-                    onmouseout="this.style.borderColor='#e5e7eb'"
-                    onfocus="this.style.borderColor='#1e40af'; this.style.boxShadow='0 0 0 3px rgba(30, 64, 175, 0.1)'"
-                    onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
                     required
                 />
             </div>
@@ -1309,10 +1311,6 @@
                     id="loginPassword" 
                     placeholder="Enter your password" 
                     style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;"
-                    onmouseover="this.style.borderColor='#d1d5db'"
-                    onmouseout="this.style.borderColor='#e5e7eb'"
-                    onfocus="this.style.borderColor='#1e40af'; this.style.boxShadow='0 0 0 3px rgba(30, 64, 175, 0.1)'"
-                    onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
                     required
                 />
             </div>
@@ -1323,13 +1321,93 @@
                 <span id="loginErrorMsg">Invalid credentials. Please try again.</span>
             </div>
 
+            <!-- Loading Indicator -->
+            <div id="loginLoading" style="display: none; text-align: center; color: #1e3a8a; font-size: 13px;">
+                ⏳ Logging in...
+            </div>
+
             <button 
-                type="submit" 
+                type="button"
+                onclick="handleLogin()"
                 style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 12px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; margin-top: 10px;"
                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 20px rgba(30, 58, 138, 0.3)'"
                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
             >
                 🔐 Login to Portal
+            </button>
+        </form>
+
+        <!-- SIGNUP FORM -->
+        <form id="signupForm" style="display: none; flex-direction: column; gap: 15px;">
+            <div>
+                <label style="display: block; font-weight: 600; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">Full Name</label>
+                <input 
+                    type="text" 
+                    id="signupName" 
+                    placeholder="Enter your full name" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;"
+                    required
+                />
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: 600; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">Email Address</label>
+                <input 
+                    type="email" 
+                    id="signupEmail" 
+                    placeholder="Enter your email" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;"
+                    required
+                />
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: 600; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">Password</label>
+                <input 
+                    type="password" 
+                    id="signupPassword" 
+                    placeholder="Create a strong password" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;"
+                    required
+                />
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: 600; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">Confirm Password</label>
+                <input 
+                    type="password" 
+                    id="signupConfirm" 
+                    placeholder="Confirm your password" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.3s;"
+                    required
+                />
+            </div>
+
+            <!-- Error Message -->
+            <div id="signupError" style="display: none; background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; border-radius: 6px; font-size: 13px; color: #dc2626; margin-bottom: 10px;">
+                <strong>Sign Up Failed</strong><br>
+                <span id="signupErrorMsg">Please check your information and try again.</span>
+            </div>
+
+            <!-- Success Message -->
+            <div id="signupSuccess" style="display: none; background: #f0fdf4; border-left: 4px solid #10b981; padding: 12px; border-radius: 6px; font-size: 13px; color: #059669; margin-bottom: 10px;">
+                <strong>✓ Account Created!</strong><br>
+                <span id="signupSuccessMsg">You can now login with your credentials.</span>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="signupLoading" style="display: none; text-align: center; color: #1e3a8a; font-size: 13px;">
+                ⏳ Creating account...
+            </div>
+
+            <button 
+                type="button"
+                onclick="handleSignup()"
+                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; margin-top: 10px;"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 20px rgba(16, 185, 129, 0.3)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+            >
+                ✓ Create Account
             </button>
         </form>
 
@@ -8022,65 +8100,165 @@ Full report: ${portalUrl}?code=[CODE]`;
         });
     }
 
-    // ===== LOGIN SYSTEM =====
+    // ===== FIREBASE AUTHENTICATION SYSTEM =====
     
-    // Hardcoded credentials (will migrate to Firebase later)
-    // Check login against database users table
-    async function handleLogin(event) {
-        event.preventDefault();
-        
-        const staffId = document.getElementById('loginUsername').value.trim();
+    // Switch between login and signup tabs
+    function switchTab(tab) {
+        if (tab === 'login') {
+            document.getElementById('loginForm').style.display = 'flex';
+            document.getElementById('signupForm').style.display = 'none';
+            document.getElementById('loginTab').style.borderBottomColor = '#1e3a8a';
+            document.getElementById('loginTab').style.color = '#1e3a8a';
+            document.getElementById('signupTab').style.borderBottomColor = 'transparent';
+            document.getElementById('signupTab').style.color = '#999';
+        } else {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('signupForm').style.display = 'flex';
+            document.getElementById('loginTab').style.borderBottomColor = 'transparent';
+            document.getElementById('loginTab').style.color = '#999';
+            document.getElementById('signupTab').style.borderBottomColor = '#1e3a8a';
+            document.getElementById('signupTab').style.color = '#1e3a8a';
+        }
+    }
+    
+    // Firebase Login Handler
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
         
+        // Validation
+        if (!email || !password) {
+            alert('Please enter email and password');
+            return;
+        }
+        
         try {
-            // Call server-side login API
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ staffId, password })
-            });
+            document.getElementById('loginLoading').style.display = 'block';
+            document.getElementById('loginError').style.display = 'none';
             
-            const data = await response.json();
+            // Wait for Firebase to initialize
+            let attempts = 0;
+            while (!window.firebaseAuthHelpers && attempts < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                attempts++;
+            }
             
-            if(data.success && data.user) {
-                // Login successful
-                console.log('✅ User authenticated:', data.user.name);
+            if (!window.firebaseAuthHelpers) {
+                throw new Error('Firebase not initialized. Please refresh the page.');
+            }
+            
+            // Use Firebase authentication helper
+            const result = await window.firebaseAuthHelpers.login(email, password);
+            
+            if (result.success) {
+                console.log('✅ Firebase login successful:', result.user.email);
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('loginTime', new Date().toISOString());
-                localStorage.setItem('currentUser', JSON.stringify(data.user));
+                localStorage.setItem('currentUser', JSON.stringify({
+                    uid: result.uid,
+                    email: result.user.email,
+                    displayName: result.user.displayName || 'User'
+                }));
                 
                 // Hide login, show app
                 document.getElementById('loginContainer').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'flex';
                 document.getElementById('reportPortalContainer').style.display = 'none';
                 
-                // Initialize app after showing
+                // Initialize app
                 updateSMSFilterUI('class');
                 loadManageStudentsFilters();
                 
-                // Try to load synced data from server
-                console.log('🔄 Checking for synced data...');
-                const dataLoaded = await importDataFromServer(data.user.id);
+                // Try to load synced data
+                const dataLoaded = await importDataFromServer(result.uid);
                 if(!dataLoaded) {
                     console.log('💾 No synced data yet. Local data will be used.');
                 }
                 
                 // Clear form
                 document.getElementById('loginForm').reset();
-                document.getElementById('loginError').style.display = 'none';
-                
-                console.log('✅ Login successful for:', data.user.name);
+                document.getElementById('loginLoading').style.display = 'none';
+                console.log('✅ Login complete');
             } else {
-                // Login failed
-                console.log('❌ Invalid credentials');
+                console.error('❌ Login failed:', result.error);
                 document.getElementById('loginError').style.display = 'block';
-                document.getElementById('loginErrorMsg').textContent = data.error || 'Invalid Staff ID or Password. Please check and try again.';
+                document.getElementById('loginErrorMsg').textContent = result.error || 'Invalid email or password';
                 document.getElementById('loginPassword').value = '';
             }
         } catch(err) {
             console.error('❌ Login error:', err);
             document.getElementById('loginError').style.display = 'block';
-            document.getElementById('loginErrorMsg').textContent = 'Error checking credentials. Please try again.';
+            document.getElementById('loginErrorMsg').textContent = err.message || 'Error during login. Please try again.';
+        } finally {
+            document.getElementById('loginLoading').style.display = 'none';
+        }
+    }
+    
+    // Firebase Sign Up Handler
+    async function handleSignup() {
+        const name = document.getElementById('signupName').value.trim();
+        const email = document.getElementById('signupEmail').value.trim();
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('signupConfirm').value;
+        
+        // Validation
+        if (!name || !email || !password || !confirmPassword) {
+            alert('Please fill in all fields');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+        
+        if (password.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+        }
+        
+        try {
+            document.getElementById('signupLoading').style.display = 'block';
+            document.getElementById('signupError').style.display = 'none';
+            document.getElementById('signupSuccess').style.display = 'none';
+            
+            // Wait for Firebase to initialize
+            let attempts = 0;
+            while (!window.firebaseAuthHelpers && attempts < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                attempts++;
+            }
+            
+            if (!window.firebaseAuthHelpers) {
+                throw new Error('Firebase not initialized. Please refresh the page.');
+            }
+            
+            // Use Firebase sign up helper
+            const result = await window.firebaseAuthHelpers.signUp(email, password);
+            
+            if (result.success) {
+                console.log('✅ Firebase account created:', result.user.email);
+                
+                // Show success message
+                document.getElementById('signupSuccess').style.display = 'block';
+                document.getElementById('signupForm').reset();
+                
+                // Switch to login after 2 seconds
+                setTimeout(() => {
+                    switchTab('login');
+                    document.getElementById('signupSuccess').style.display = 'none';
+                }, 2000);
+            } else {
+                console.error('❌ Sign up failed:', result.error);
+                document.getElementById('signupError').style.display = 'block';
+                document.getElementById('signupErrorMsg').textContent = result.error || 'Error creating account';
+            }
+        } catch(err) {
+            console.error('❌ Sign up error:', err);
+            document.getElementById('signupError').style.display = 'block';
+            document.getElementById('signupErrorMsg').textContent = err.message || 'Error during sign up. Please try again.';
+        } finally {
+            document.getElementById('signupLoading').style.display = 'none';
         }
     }
 

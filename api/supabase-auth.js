@@ -73,8 +73,12 @@ module.exports = async (req, res) => {
       });
 
       if (error) {
-        console.error('[Supabase Auth] Signup error:', error.message);
-        return res.status(400).json({ error: error.message });
+        console.error('[Supabase Auth] Signup error:', error.message, error);
+        console.error('[Supabase Auth] Error details:', JSON.stringify(error, null, 2));
+        return res.status(400).json({ 
+          error: error.message || 'Signup failed',
+          details: error
+        });
       }
 
       // Create user profile
@@ -119,8 +123,12 @@ module.exports = async (req, res) => {
       });
 
       if (error) {
-        console.error('[Supabase Auth] Login error:', error.message);
-        return res.status(401).json({ error: 'Invalid credentials' });
+        console.error('[Supabase Auth] Login error:', error.message, error);
+        console.error('[Supabase Auth] Error details:', JSON.stringify(error, null, 2));
+        return res.status(401).json({ 
+          error: error.message || 'Invalid credentials',
+          details: error
+        });
       }
 
       // Get user profile

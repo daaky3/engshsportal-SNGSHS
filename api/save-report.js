@@ -21,6 +21,11 @@ module.exports = async (req, res) => {
   try {
     const { reportCode, reportData, userId, students, results, classes } = req.body;
 
+    // Ensure reportCode is included in reportData
+    if (reportData && reportCode && !reportData.reportCode) {
+      reportData.reportCode = reportCode;
+    }
+
     if (!reportCode || !reportData) {
       return res.status(400).json({ error: 'Missing reportCode or reportData' });
     }

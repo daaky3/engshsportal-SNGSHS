@@ -1,6 +1,10 @@
 {
   "version": 2,
+  "public": true,
   "builds": [
+    { "src": "manifest.json", "use": "@vercel/static" },
+    { "src": "service-worker.js", "use": "@vercel/static" },
+    { "src": "SENGSHSLOGO.jpg", "use": "@vercel/static" },
     { "src": "server.js", "use": "@vercel/node" },
     { "src": "api/auth.js", "use": "@vercel/node" },
     { "src": "api/export-data.js", "use": "@vercel/node" },
@@ -9,11 +13,14 @@
     { "src": "api/save-report.js", "use": "@vercel/node" }
   ],
   "routes": [
+    { "src": "^/manifest.json$", "dest": "/manifest.json" },
+    { "src": "^/service-worker.js$", "dest": "/service-worker.js" },
+    { "src": "^/SENGSHSLOGO.jpg$", "dest": "/SENGSHSLOGO.jpg" },
     { "src": "^/api/auth", "dest": "/api/auth.js", "methods": ["GET", "POST", "OPTIONS"] },
     { "src": "^/api/export", "dest": "/api/export-data.js" },
     { "src": "^/api/get", "dest": "/api/get-report.js" },
     { "src": "^/api/import", "dest": "/api/import-data.js" },
     { "src": "^/api/save", "dest": "/api/save-report.js" },
-    { "src": "^/(.*)", "dest": "/server.js" }
+    { "src": "/(.*)", "dest": "/server.js" }
   ]
 }

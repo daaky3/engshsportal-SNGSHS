@@ -1195,49 +1195,50 @@
     
     updateLoadingStatus('Loading required libraries...');
 
-    // ===== FIREBASE INITIALIZATION =====
-    const firebaseConfig = {
-      apiKey: "AIzaSyCbd6nFbdypbzQo2ZuYUo1UCBhShXkB_dk",
-      authDomain: "sengshsportal.firebaseapp.com",
-      projectId: "sengshsportal",
-      storageBucket: "sengshsportal.firebasestorage.app",
-      messagingSenderId: "215579304323",
-      appId: "1:215579304323:web:53834338c8d6e7f25456b6",
-      measurementId: "G-NDFMDLF2XY"
-    };
+    // ===== FIREBASE INITIALIZATION (Wrapped in Async IIFE) =====
+    (async function initializeFirebase() {
+      const firebaseConfig = {
+        apiKey: "AIzaSyCbd6nFbdypbzQo2ZuYUo1UCBhShXkB_dk",
+        authDomain: "sengshsportal.firebaseapp.com",
+        projectId: "sengshsportal",
+        storageBucket: "sengshsportal.firebasestorage.app",
+        messagingSenderId: "215579304323",
+        appId: "1:215579304323:web:53834338c8d6e7f25456b6",
+        measurementId: "G-NDFMDLF2XY"
+      };
 
-    // Initialize Firebase
-    let firebaseApp = null;
-    let firebaseAuth = null;
-    let firebaseDb = null;
+      // Initialize Firebase
+      let firebaseApp = null;
+      let firebaseAuth = null;
+      let firebaseDb = null;
 
-    try {
-      // Wait for Firebase to load
-      let waitAttempts = 0;
-      while (typeof firebase === 'undefined' && waitAttempts < 20) {
-        await new Promise(r => setTimeout(r, 250));
-        waitAttempts++;
+      try {
+        // Wait for Firebase to load
+        let waitAttempts = 0;
+        while (typeof firebase === 'undefined' && waitAttempts < 20) {
+          await new Promise(r => setTimeout(r, 250));
+          waitAttempts++;
+        }
+
+        if (typeof firebase === 'undefined') {
+          throw new Error('Firebase SDK failed to load from CDN');
+        }
+
+        firebaseApp = firebase.initializeApp(firebaseConfig);
+        firebaseAuth = firebase.auth();
+        firebaseDb = firebase.firestore();
+        console.log('✅ Firebase initialized successfully');
+        updateLoadingStatus('Firebase initialized');
+      } catch (error) {
+        console.error('❌ Firebase initialization error:', error);
+        updateLoadingStatus('Firebase error - see console');
       }
 
-      if (typeof firebase === 'undefined') {
-        throw new Error('Firebase SDK failed to load from CDN');
-      }
-
-      firebaseApp = firebase.initializeApp(firebaseConfig);
-      firebaseAuth = firebase.auth();
-      firebaseDb = firebase.firestore();
-      console.log('✅ Firebase initialized successfully');
-      updateLoadingStatus('Firebase initialized');
-    } catch (error) {
-      console.error('❌ Firebase initialization error:', error);
-      updateLoadingStatus('Firebase error - see console');
-    }
-
-    // Create helper for authentication
-    window.firebaseAuthHelpers = {
-      async signUp(email, password) {
-        try {
-          if (!firebaseAuth) throw new Error('Firebase not initialized');
+      // Create helper for authentication
+      window.firebaseAuthHelpers = {
+        async signUp(email, password) {
+          try {
+            if (!firebaseAuth) throw new Error('Firebase not initialized');
           const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
           console.log('✅ Sign up successful:', userCred.user.email);
           return { success: true, user: userCred.user, uid: userCred.user.uid };
@@ -1288,6 +1289,7 @@
     };
 
     console.log('%c🚀 Firebase Auth Helpers Ready', 'color: #10b981; font-size: 12px; font-weight: bold;');
+    })(); // Close the async IIFE
 </script>
 
 <div id="reportPortalContainer" style="display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; overflow-x: hidden; overflow-y: auto; box-sizing: border-box;">

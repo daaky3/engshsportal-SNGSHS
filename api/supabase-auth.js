@@ -52,9 +52,20 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
 
+      // Normalize email: trim and lowercase
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      console.log(`[Supabase Auth] Normalized email: ${normalizedEmail} (original: ${email})`);
+
       // Sign up with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: { name }
@@ -98,9 +109,12 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Email and password required' });
       }
 
+      // Normalize email: trim and lowercase
+      const normalizedEmail = email.trim().toLowerCase();
+
       // Sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password
       });
 

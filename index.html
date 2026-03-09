@@ -5584,35 +5584,8 @@ Full report: ${portalUrl}?code=[CODE]`;
 
     async function sendSMSViaArkesel(phoneNumber, message) {
         try {
-            const apiKeyConfig = await db.config.get('arkeselApiKey');
-            const senderIdConfig = await db.config.get('arkeselSenderId');
             const testModeConfig = await db.config.get('arkeselTestMode');
-
-            if(!apiKeyConfig?.value) {
-                throw new Error('Arkesel API key not configured');
-            }
-
-            if(!senderIdConfig?.value) {
-                throw new Error('Sender ID not configured');
-            }
-
-            const apiKey = apiKeyConfig.value;
-            const senderId = senderIdConfig.value;
             const testMode = testModeConfig?.value === true;
-
-            // Debug: Check for extra spaces
-            console.log('📋 API Key Debug:');
-            console.log('  Raw length:', apiKey.length);
-            console.log('  Trimmed length:', apiKey.trim().length);
-            console.log('  Has leading spaces:', /^\s/.test(apiKey));
-            console.log('  Has trailing spaces:', /\s$/.test(apiKey));
-            console.log('  First 5 chars:', JSON.stringify(apiKey.substring(0, 5)));
-            console.log('  Last 5 chars:', JSON.stringify(apiKey.substring(apiKey.length - 5)));
-            
-            console.log('📋 Sender ID Debug:');
-            console.log('  Raw:', JSON.stringify(senderId));
-            console.log('  Trimmed:', JSON.stringify(senderId.trim()));
-            console.log('  Length:', senderId.length);
 
             // Format phone number (remove + if present, ensure 0 prefix)
             let formattedPhone = phoneNumber.replace(/[\s\+]/g, '').trim();
@@ -5639,7 +5612,7 @@ Full report: ${portalUrl}?code=[CODE]`;
             }
 
             console.log('📱 Starting SMS send via server relay:');
-            console.log('Phone:', formattedPhone, '| Sender:', senderId, '| Message length:', message.length);
+            console.log('Phone:', formattedPhone, '| Message length:', message.length);
 
             // Use server-side relay to avoid CORS issues
             const controller = new AbortController();

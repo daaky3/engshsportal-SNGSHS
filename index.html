@@ -13,9 +13,10 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e3a8a' width='192' height='192'/><text x='50%' y='50%' font-size='120' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231e3a8a' width='180' height='180'/><text x='50%' y='50%' font-size='100' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <title>Serwaah Nyarko Portal - Official System</title>
-    <!-- Firebase Configuration and Auth Utils -->
-    <script src="firebase-config.js"></script>
-    <script src="firebase-auth-utils.js"></script>
+    <!-- Firebase SDK CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
     <!-- Third-party Libraries -->
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
@@ -1193,6 +1194,85 @@
     }
     
     updateLoadingStatus('Loading required libraries...');
+
+    // ===== FIREBASE INITIALIZATION =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCbd6nFbdypbzQo2ZuYUo1UCBhShXkB_dk",
+      authDomain: "sengshsportal.firebaseapp.com",
+      projectId: "sengshsportal",
+      storageBucket: "sengshsportal.firebasestorage.app",
+      messagingSenderId: "215579304323",
+      appId: "1:215579304323:web:53834338c8d6e7f25456b6",
+      measurementId: "G-NDFMDLF2XY"
+    };
+
+    // Initialize Firebase
+    let firebaseApp = null;
+    let firebaseAuth = null;
+    let firebaseDb = null;
+
+    try {
+      firebaseApp = firebase.initializeApp(firebaseConfig);
+      firebaseAuth = firebase.auth();
+      firebaseDb = firebase.firestore();
+      console.log('✅ Firebase initialized successfully');
+      updateLoadingStatus('Firebase initialized');
+    } catch (error) {
+      console.error('❌ Firebase initialization error:', error);
+      updateLoadingStatus('Firebase error - see console');
+    }
+
+    // Create helper for authentication
+    window.firebaseAuthHelpers = {
+      async signUp(email, password) {
+        try {
+          if (!firebaseAuth) throw new Error('Firebase not initialized');
+          const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+          return { success: true, user: userCred.user, uid: userCred.user.uid };
+        } catch (error) {
+          console.error('Sign up error:', error);
+          return { success: false, error: error.message };
+        }
+      },
+
+      async login(email, password) {
+        try {
+          if (!firebaseAuth) throw new Error('Firebase not initialized');
+          const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
+          return { success: true, user: userCred.user, uid: userCred.user.uid };
+        } catch (error) {
+          console.error('Login error:', error);
+          return { success: false, error: error.message };
+        }
+      },
+
+      async logout() {
+        try {
+          if (!firebaseAuth) throw new Error('Firebase not initialized');
+          await firebaseAuth.signOut();
+          return { success: true };
+        } catch (error) {
+          return { success: false, error: error.message };
+        }
+      },
+
+      getCurrentUser() {
+        return firebaseAuth?.currentUser || null;
+      },
+
+      async getToken() {
+        try {
+          const user = firebaseAuth?.currentUser;
+          if (!user) return null;
+          return await user.getIdToken();
+        } catch (error) {
+          console.error('Error getting token:', error);
+          return null;
+        }
+      }
+    };
+
+    console.log('%c🚀 Firebase Auth Helpers Ready', 'color: #10b981; font-size: 12px; font-weight: bold;');
 </script>
 
 <div id="reportPortalContainer" style="display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; overflow-x: hidden; overflow-y: auto; box-sizing: border-box;">
@@ -8136,17 +8216,6 @@ Full report: ${portalUrl}?code=[CODE]`;
             document.getElementById('loginLoading').style.display = 'block';
             document.getElementById('loginError').style.display = 'none';
             
-            // Wait for Firebase to initialize
-            let attempts = 0;
-            while (!window.firebaseAuthHelpers && attempts < 10) {
-                await new Promise(r => setTimeout(r, 500));
-                attempts++;
-            }
-            
-            if (!window.firebaseAuthHelpers) {
-                throw new Error('Firebase not initialized. Please refresh the page.');
-            }
-            
             // Use Firebase authentication helper
             const result = await window.firebaseAuthHelpers.login(email, password);
             
@@ -8221,17 +8290,6 @@ Full report: ${portalUrl}?code=[CODE]`;
             document.getElementById('signupLoading').style.display = 'block';
             document.getElementById('signupError').style.display = 'none';
             document.getElementById('signupSuccess').style.display = 'none';
-            
-            // Wait for Firebase to initialize
-            let attempts = 0;
-            while (!window.firebaseAuthHelpers && attempts < 10) {
-                await new Promise(r => setTimeout(r, 500));
-                attempts++;
-            }
-            
-            if (!window.firebaseAuthHelpers) {
-                throw new Error('Firebase not initialized. Please refresh the page.');
-            }
             
             // Use Firebase sign up helper
             const result = await window.firebaseAuthHelpers.signUp(email, password);

@@ -13,7 +13,9 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e3a8a' width='192' height='192'/><text x='50%' y='50%' font-size='120' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231e3a8a' width='180' height='180'/><text x='50%' y='50%' font-size='100' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <title>Serwaah Nyarko Portal - Official System</title>
-    <!-- Custom Authentication - No external CDN needed -->
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <!-- Custom Authentication - Use Supabase -->
     <script>
       // Global auth state
       window.currentUser = null;
@@ -1197,12 +1199,12 @@
     
     updateLoadingStatus('Loading required libraries...');
 
-    // ===== CUSTOM AUTHENTICATION API (No Firebase CDN needed) =====
+    // ===== SUPABASE AUTHENTICATION =====
     window.firebaseAuthHelpers = {
       async signUp(email, password, name) {
         try {
           console.log('📝 Signing up user:', email);
-          const response = await fetch('/api/auth', {
+          const response = await fetch('/api/supabase-auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, name, action: 'signup' })
@@ -1227,7 +1229,7 @@
       async login(email, password) {
         try {
           console.log('🔑 Logging in user:', email);
-          const response = await fetch('/api/auth', {
+          const response = await fetch('/api/supabase-auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, action: 'login' })
@@ -1251,15 +1253,6 @@
 
       async logout() {
         try {
-          await fetch('/api/auth', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${window.currentToken}`
-            },
-            body: JSON.stringify({ action: 'logout' })
-          });
-
           window.currentUser = null;
           window.currentToken = null;
           localStorage.removeItem('authToken');
@@ -1294,7 +1287,7 @@
     }
 
     restoreSession();
-    console.log('✅ Authentication API Ready - No CDN Required');
+    console.log('✅ Supabase Authentication Ready');
     updateLoadingStatus('Authentication ready');
 </script>
 

@@ -5651,9 +5651,7 @@ Full report: ${portalUrl}?code=[CODE]`;
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    apiKey: apiKey.trim(),
                     phoneNumber: formattedPhone,
-                    senderId: senderId.trim(),
                     message: message
                 }),
                 signal: controller.signal

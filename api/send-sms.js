@@ -7,10 +7,22 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { apiKey, phoneNumber, senderId, message } = req.body;
+    const { phoneNumber, message } = req.body;
+    
+    // Read credentials from environment variables (securely stored in Vercel)
+    const apiKey = process.env.ARKESEL_API_KEY;
+    const senderId = process.env.ARKESEL_SENDER_ID;
 
-    if (!apiKey || !phoneNumber || !senderId || !message) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!apiKey || !senderId) {
+      console.error('[SMS] Error: Arkesel credentials not configured in environment');
+      return res.status(500).json({ 
+        error: 'SMS service not configured. Contact administrator.',
+        details: 'Missing ARKESEL_API_KEY or ARKESEL_SENDER_ID'
+      });
+    }
+
+    if (!phoneNumber || !message) {
+      return res.status(400).json({ error: 'Missing phone number or message' });
     }
 
     console.log(`[SMS] Sending SMS to ${phoneNumber}`);

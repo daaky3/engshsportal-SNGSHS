@@ -5321,9 +5321,8 @@
             const termMap = { '1': 'First', '2': 'Second', '3': 'Third' };
             const termName = termMap[semester] || semester;
 
-            // Get portal URL from config (default to localhost:8080 for local development)
-            const portalUrlConfig = await db.config.get('portalUrl');
-            const portalUrl = portalUrlConfig?.value || 'http://localhost:8080';
+            // Get portal URL - use deployed URL
+            const portalUrl = 'https://engshsportal-sngshs.vercel.app';
 
             // Create SMS summary with portal link
             const smsSummary = `Serwaah Nyarko Girls' SHS
@@ -5331,7 +5330,10 @@ Terminal Report – Term ${termName}, ${academicYear}
 Student: ${student.name}
 Class: ${cls.name}
 ${subjectGrades}
-Full report: ${portalUrl}?code=[CODE]`;
+
+📋 Full Report: ${portalUrl}?code=[CODE]
+
+Parents can view the complete terminal report by opening the link above.`;
 
             return {
                 summary: smsSummary,
@@ -5806,6 +5808,7 @@ Full report: ${portalUrl}?code=[CODE]`;
                     
                     // Save the FULL HTML report to server (this is what parents will see!)
                     const reportSaveData = {
+                        reportCode: reportCode,  // Important: save the code!
                         studentId: student.id,
                         studentName: student.name,
                         reportHTML: reportHTML,  // Full beautiful HTML with logo, colors, etc.

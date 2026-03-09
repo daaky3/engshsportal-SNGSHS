@@ -1,0 +1,93 @@
+# 🚀 QUICK START GUIDE
+
+## What You Now Have
+
+Your Serwaah Portal is now a **Progressive Web App (PWA)** that can be installed on your computer as a standalone application - no coding needed!
+
+## Files Added
+
+✓ **manifest.json** - App metadata & configuration
+✓ **service-worker.js** - Offline support & caching
+✓ **server.js** - Lightweight server
+✓ **start-server.bat** - Windows startup script (double-click this!)
+✓ **start-server.ps1** - PowerShell version
+✓ **package.json** - Project config
+✓ **README.md** - Full documentation
+
+## 🎯 Installation Steps (First Time Only)
+
+### Step 1: Ensure Node.js is Installed
+- Download from: https://nodejs.org (LTS version recommended)
+- Install on your computer
+
+### Step 2: Start the Server
+**Easiest:** Double-click `start-server.bat` (or `start-server.ps1` for PowerShell)
+
+**Or use Terminal:**
+```
+node server.js
+```
+
+You should see:
+```
+✓ Server running at http://localhost:8080/
+✓ PWA is ready for installation
+```
+
+### Step 3: Open in Browser
+- Go to: `http://localhost:8080`
+- Your app opens in browser
+
+### Step 4: Install the App
+**Microsoft Edge or Chrome:**
+- Look for the **Install** button in the address bar (top-right)
+- Click it and confirm
+- App appears on desktop and Start Menu
+
+**If no install button:**
+- Press `F12` (Developer Tools)
+- Go to **Application** tab
+- Find **install** button
+- Or use **Install app** from menu
+
+### Step 5: Use Your App
+- Find **Serwaah Portal** in Start Menu (Windows) or Applications (Mac)
+- Click to launch - it opens as a standalone window
+- Continue using the server script running in background OR
+- Close server - app still works offline!
+
+## 💡 Pro Tips
+
+✅ **Keep server running in background** while you work
+✅ **First visit**: Service worker caches everything (2-3 seconds)
+✅ **Subsequent visits**: Instant load from cache
+✅ **Offline mode**: All cached pages work without internet
+✅ **Data stored locally**: Uses browser's local database (Dexie.js)
+
+## 📌 Whenever You Want to Use the App
+
+1. Double-click `start-server.bat` (or `start-server.ps1`)
+2. Server starts automatically
+3. Click **Serwaah Portal** from Start Menu or Applications
+4. App opens and works!
+
+---
+
+## ❓ Need Help?
+
+**Server won't start?**
+- Make sure Node.js is installed (check with `node --version`)
+- Try running scripts as Administrator
+
+**App won't install?**
+- Use Chrome, Edge, or Brave browser
+- Server must be running
+- Clear browser cache (Ctrl+Shift+Delete)
+
+**Old data showing?**
+- Hard refresh: `Ctrl+Shift+R`
+- Clear service workers in Developer Tools
+
+---
+
+You're all set! Your PWA is ready to use. 🎉

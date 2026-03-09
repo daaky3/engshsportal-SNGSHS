@@ -1,32 +1,37 @@
 // Custom Authentication API - No external Firebase needed
-// Store user data locally for demo/testing
+// Use /tmp for data storage (persists longer in Vercel)
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Simple in-memory user storage (replace with actual database in production)
-let users = {};
-const usersFile = path.join(__dirname, '../users.json');
+// Use /tmp for persistent storage in serverless environment
+const usersFile = path.join('/tmp', 'users.json');
 
 // Load users from file if exists
 function loadUsers() {
   try {
     if (fs.existsSync(usersFile)) {
+      console.log('[Auth] Loading users from /tmp/users.json');
       const data = fs.readFileSync(usersFile, 'utf-8');
-      users = JSON.parse(data);
+      return JSON.parse(data);
     }
   } catch (error) {
-    console.error('Error loading users:', error);
+    console.error('[Auth] Error loading users:', error.message);
   }
+  console.log('[Auth] No existing users file, starting fresh');
+  return {};
 }
 
-// Save users to file
-function saveUsers() {
+// Save users to /tmp
+function saveUsers(users) {
   try {
     fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+    console.log('[Auth] Users saved to /tmp/users.json');
+    return true;
   } catch (error) {
-    console.error('Error saving users:', error);
+    console.error('[Auth] Error saving users:', error.message);
+    return false;
   }
 }
 
@@ -56,8 +61,6 @@ async function parseBody(req) {
   });
 }
 
-loadUsers();
-
 // Main handler
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
@@ -70,9 +73,14 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Load fresh copy of users for each request
+    let users = loadUsers();
+    
     const body = await parseBody(req);
     const action = body.action || 'login';
     const { email, password, name } = body;
+
+    console.log(`[Auth] Action: ${action}, Email: ${email}`);
 
     if (action === 'signup') {
       if (!email || !password || !name) {
@@ -85,6 +93,7 @@ module.exports = async (req, res) => {
 
       // Check if user exists
       if (users[email]) {
+        console.log(`[Auth] User already exists: ${email}`);
         return res.status(400).json({ error: 'User already exists' });
       }
 
@@ -102,7 +111,9 @@ module.exports = async (req, res) => {
         createdAt: new Date().toISOString()
       };
 
-      saveUsers();
+      // Save to /tmp
+      saveUsers(users);
+      console.log(`[Auth] Signup successful: ${email}`);
 
       return res.status(201).json({
         success: true,
@@ -121,22 +132,28 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Email and password required' });
       }
 
+      console.log(`[Auth] Login attempt. Users in store: ${Object.keys(users).length}`);
+      console.log(`[Auth] Stored users: ${JSON.stringify(Object.keys(users))}`);
+
       // Find user
       const user = users[email];
       if (!user) {
+        console.log(`[Auth] User not found: ${email}`);
         return res.status(401).json({ error: 'User not found' });
       }
 
       const hashedPassword = hashPassword(password);
       if (user.password !== hashedPassword) {
+        console.log(`[Auth] Invalid password for: ${email}`);
         return res.status(401).json({ error: 'Invalid password' });
       }
 
       // Generate new token
       const token = generateToken();
       user.token = token;
-      saveUsers();
+      saveUsers(users);
 
+      console.log(`[Auth] Login successful: ${email}`);
       return res.status(200).json({
         success: true,
         user: {
@@ -155,7 +172,7 @@ module.exports = async (req, res) => {
         const userEmail = Object.keys(users).find(email => users[email].token === token);
         if (userEmail) {
           users[userEmail].token = null;
-          saveUsers();
+          saveUsers(users);
         }
       }
 
@@ -189,7 +206,7 @@ module.exports = async (req, res) => {
 
     return res.status(400).json({ error: 'Invalid action' });
   } catch (error) {
-    console.error('Auth error:', error);
+    console.error('[Auth] Error:', error);
     return res.status(500).json({ error: error.message });
   }
 };

@@ -2,12 +2,18 @@
   "version": 2,
   "builds": [
     { "src": "server.js", "use": "@vercel/node" },
-    { "src": "api/*.js", "use": "@vercel/node" }
+    { "src": "api/auth.js", "use": "@vercel/node" },
+    { "src": "api/export-data.js", "use": "@vercel/node" },
+    { "src": "api/get-report.js", "use": "@vercel/node" },
+    { "src": "api/import-data.js", "use": "@vercel/node" },
+    { "src": "api/save-report.js", "use": "@vercel/node" }
   ],
   "routes": [
-    { "src": "/manifest.json", "dest": "/manifest.json", "headers": { "Content-Type": "application/manifest+json" } },
-    { "src": "/service-worker.js", "dest": "/service-worker.js", "headers": { "Content-Type": "application/javascript", "Service-Worker-Allowed": "/" } },
-    { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/(.*)", "dest": "/server.js" }
+    { "src": "^/api/auth", "dest": "/api/auth.js", "methods": ["GET", "POST", "OPTIONS"] },
+    { "src": "^/api/export", "dest": "/api/export-data.js" },
+    { "src": "^/api/get", "dest": "/api/get-report.js" },
+    { "src": "^/api/import", "dest": "/api/import-data.js" },
+    { "src": "^/api/save", "dest": "/api/save-report.js" },
+    { "src": "^/(.*)", "dest": "/server.js" }
   ]
 }

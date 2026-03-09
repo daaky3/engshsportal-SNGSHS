@@ -526,10 +526,11 @@ const server = http.createServer((req, res) => {
     if (err) {
       if (err.code === 'ENOENT') {
         console.log('[File] Not found:', requestPath, '- Checking if should serve index.html');
-        // For SPA routing, serve index.html for non-existent files (except APIs and assets)
+        // For SPA routing, serve index.html for non-existent files (except APIs and actual resource files)
         const shouldServeIndex = !requestPath.startsWith('/api/') && 
-                                  !requestPath.includes('.') &&
-                                  !requestPath.endsWith('.json');
+                                  requestPath !== '/manifest.json' &&
+                                  requestPath !== '/service-worker.js' &&
+                                  (requestPath === '/' || !requestPath.split('/').pop().includes('.'));
         
         if (shouldServeIndex) {
           fs.readFile(path.join(baseDir, 'index.html'), (indexErr, indexContent) => {

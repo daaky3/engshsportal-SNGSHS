@@ -26,12 +26,12 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing report code' });
     }
 
-    // Fetch report from Supabase using the report code stored in report_data JSONB
-    const { data: reports, error } = await supabase
-      .from('reports')
-      .select('*')
-      .filter('report_data', 'cs', `{"reportCode":"${reportCode}"}`)
-      .limit(1);
+      // Fetch report from Supabase using the report code stored in report_data JSONB
+      const { data: reports, error } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('report_data->>reportCode', reportCode)
+        .limit(1);
 
     if (error) {
       console.error('[Report Get] Supabase error:', error.message);

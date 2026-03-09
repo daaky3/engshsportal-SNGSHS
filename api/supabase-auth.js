@@ -53,10 +53,12 @@ module.exports = async (req, res) => {
       }
 
       // Sign up with Supabase Auth
-      const { data, error } = await supabase.auth.admin.createUser({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true
+        options: {
+          data: { name }
+        }
       });
 
       if (error) {
@@ -97,7 +99,7 @@ module.exports = async (req, res) => {
       }
 
       // Sign in with Supabase Auth
-      const { data, error } = await supabase.auth.admin.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });

@@ -1566,6 +1566,7 @@
     <a onclick="showSection('subjects')" id="nav-subjects"><b>Subject Registry</b></a>
     <a onclick="showSection('classes')" id="nav-classes"><b>Class & Dept</b></a>
     <a onclick="showSection('students')" id="nav-students"><b>Student Entry</b></a>
+    <a onclick="showSection('teachers')" id="nav-teachers"><b>Teachers</b></a>
     <a onclick="showSection('results')" id="nav-results"><b>Results Entry</b></a>
     <a onclick="showSection('manage')" id="nav-manage"><b>Manage Results</b></a>
     <a onclick="showSection('managestudents')" id="nav-managestudents"><b>Manage Students</b></a>
@@ -1796,6 +1797,65 @@
     </div>
 
     <div id="students" class="section">
+            <div id="teachers" class="section">
+                <h1>Teacher Entry</h1>
+                <div class="card">
+                    <h3 style="margin-top:0; color: var(--primary);">Single Teacher Entry</h3>
+                    <div class="grid-3">
+                        <input type="text" id="tSurnameInput" placeholder="Surname">
+                        <input type="text" id="tFirstNameInput" placeholder="First Name">
+                        <input type="text" id="tOtherNameInput" placeholder="Other Name">
+                    </div>
+                    <div class="grid-3" style="margin-top: 10px;">
+                        <input type="text" id="tPhoneInput" placeholder="Phone Number (0xxxxxxxxx)" style="grid-column: span 3;">
+                        <input type="text" id="tMainSubjectInput" placeholder="Main Subject" style="grid-column: span 3;">
+                        <input type="text" id="tOtherSubjectsInput" placeholder="Other Subjects (comma separated)" style="grid-column: span 3;">
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:10px;" onclick="addTeacher()">Register Teacher</button>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-top:0; color: var(--primary);">Bulk Teacher Import</h3>
+                    <div class="grid-3">
+                        <button class="btn btn-primary" onclick="downloadTeacherTemplate()">Download Template</button>
+                        <input type="file" id="bulkTeacherUploadFile" accept=".xlsx" style="padding:8px;">
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:10px;" onclick="handleBulkTeacherUpload()">Preview & Import</button>
+                    <div id="bulkTeacherPreview" style="margin-top:15px; display:none; background:#f1f5f9; padding:15px; border-radius:6px; border: 1px solid var(--border);"></div>
+                            <button class="btn btn-primary" id="bulkTeacherImportBtn" style="margin-top:10px; display:none;" onclick="importBulkTeachers()">Import Teachers</button>
+                    async function importBulkTeachers() {
+                        if(!bulkTeacherImportData || bulkTeacherImportData.length === 0) {
+                            alert("No valid teacher records to import.");
+                            return;
+                        }
+                        // Simple verification: check required fields
+                        const invalid = bulkTeacherImportData.filter(t => !t.surname || !t.first_name || !t.phone || !t.main_subject);
+                        if(invalid.length > 0) {
+                            alert("Some records are missing required fields. Please check the preview.");
+                            return;
+                        }
+                        // Send to backend
+                        try {
+                            const response = await fetch('/api/teachers', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ teachers: bulkTeacherImportData })
+                            });
+                            const result = await response.json();
+                            if(result.success) {
+                                alert("Teachers imported successfully!");
+                                document.getElementById('bulkTeacherPreview').style.display = 'none';
+                                document.getElementById('bulkTeacherImportBtn').style.display = 'none';
+                                bulkTeacherImportData = [];
+                            } else {
+                                alert("Import failed: " + (result.error || 'Unknown error'));
+                            }
+                        } catch(err) {
+                            alert("Error: " + err.message);
+                        }
+                    }
+                </div>
+            </div>
         <h1>Student Entry</h1>
         <div class="card">
             <h3 style="margin-top:0; color: var(--primary);">Single Student Entry</h3>
@@ -3285,6 +3345,72 @@
 
     // --- BULK STUDENT IMPORT ---
     async function downloadStudentTemplate() {
+        // ...existing code...
+    }
+
+    // --- BULK TEACHER IMPORT ---
+    async function downloadTeacherTemplate() {
+        try {
+            if(!window.XLSX) { alert("Excel library not loaded. Please refresh the page."); return; }
+            const wb = XLSX.utils.book_new();
+            const wsData = [
+                ["Surname", "First Name", "Other Name", "Phone Number", "Main Subject", "Other Subjects"],
+                ...Array(20).fill(null).map(() => ["", "", "", "", "", ""])
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!cols'] = [{wch: 20}, {wch: 20}, {wch: 20}, {wch: 15}, {wch: 25}, {wch: 30}];
+            XLSX.utils.book_append_sheet(wb, ws, "Teachers");
+            XLSX.writeFile(wb, `Teachers_Template.xlsx`);
+            alert("Template downloaded successfully!");
+        } catch(err) {
+            alert("Error: " + err.message);
+            console.error(err);
+        }
+    }
+
+    let bulkTeacherImportData = [];
+    async function handleBulkTeacherUpload() {
+        const file = document.getElementById('bulkTeacherUploadFile').files[0];
+        if(!file) { alert("Please select a file"); return; }
+        try {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                // Validate header
+                const header = rows[0];
+                if(!header || header[0] !== 'Surname' || header[1] !== 'First Name' || header[2] !== 'Other Name' || header[3] !== 'Phone Number' || header[4] !== 'Main Subject' || header[5] !== 'Other Subjects') {
+                    alert("Invalid template format. Please use the downloaded template.");
+                    return;
+                }
+                // Parse data
+                bulkTeacherImportData = rows.slice(1).filter(row => row[0] && row[1] && row[3] && row[4]).map(row => ({
+                    surname: row[0],
+                    first_name: row[1],
+                    other_name: row[2] || '',
+                    phone: row[3],
+                    main_subject: row[4],
+                    other_subjects: row[5] || ''
+                }));
+                // Preview
+                const previewDiv = document.getElementById('bulkTeacherPreview');
+                if(bulkTeacherImportData.length === 0) {
+                    previewDiv.innerHTML = '<span style="color:#dc2626">No valid teacher records found.</span>';
+                    previewDiv.style.display = 'block';
+                    return;
+                }
+                previewDiv.innerHTML = '<b>Preview:</b><br>' + bulkTeacherImportData.map(t => `<div style="margin-bottom:8px;">${t.surname} ${t.first_name} (${t.phone}) - ${t.main_subject} ${t.other_subjects ? ' | Other: ' + t.other_subjects : ''}</div>`).join('');
+                previewDiv.style.display = 'block';
+                document.getElementById('bulkTeacherImportBtn').style.display = bulkTeacherImportData.length > 0 ? 'inline-block' : 'none';
+            };
+            reader.readAsArrayBuffer(file);
+        } catch(err) {
+            alert("Error: " + err.message);
+            console.error(err);
+        }
+    }
         try {
             const cid = parseInt(document.getElementById('bulkClassSelect').value);
             if(!cid) { alert("Please select a class first"); return; }

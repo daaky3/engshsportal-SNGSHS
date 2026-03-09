@@ -6,23 +6,23 @@
     { "src": "service-worker.js", "use": "@vercel/static" },
     { "src": "SENGSHSLOGO.jpg", "use": "@vercel/static" },
     { "src": "server.js", "use": "@vercel/node" },
-    { "src": "api/auth.js", "use": "@vercel/node" },
     { "src": "api/supabase-auth.js", "use": "@vercel/node" },
     { "src": "api/export-data.js", "use": "@vercel/node" },
     { "src": "api/get-report.js", "use": "@vercel/node" },
     { "src": "api/import-data.js", "use": "@vercel/node" },
     { "src": "api/save-report.js", "use": "@vercel/node" },
-    { "src": "api/send-sms.js", "use": "@vercel/node" }
+    { "src": "api/send-sms.js", "use": "@vercel/node" },
+    { "src": "api/save-data.js", "use": "@vercel/node" }
   ],
   "routes": [
     { "src": "^/manifest.json$", "dest": "/manifest.json" },
     { "src": "^/service-worker.js$", "dest": "/service-worker.js" },
     { "src": "^/SENGSHSLOGO.jpg$", "dest": "/SENGSHSLOGO.jpg" },
     { "src": "^/api/supabase-auth(.*)$", "dest": "/api/supabase-auth.js" },
-    { "src": "^/api/auth(.*)$", "dest": "/api/auth.js" },
     { "src": "^/api/export(.*)$", "dest": "/api/export-data.js" },
     { "src": "^/api/get(.*)$", "dest": "/api/get-report.js" },
     { "src": "^/api/import(.*)$", "dest": "/api/import-data.js" },
+    { "src": "^/api/savedata(.*)$", "dest": "/api/save-data.js" },
     { "src": "^/api/save(.*)$", "dest": "/api/save-report.js" },
     { "src": "^/api/send(.*)$", "dest": "/api/send-sms.js" },
     { "src": "/(.*)", "dest": "/server.js" }

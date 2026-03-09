@@ -11,7 +11,8 @@
     { "src": "api/export-data.js", "use": "@vercel/node" },
     { "src": "api/get-report.js", "use": "@vercel/node" },
     { "src": "api/import-data.js", "use": "@vercel/node" },
-    { "src": "api/save-report.js", "use": "@vercel/node" }
+    { "src": "api/save-report.js", "use": "@vercel/node" },
+    { "src": "api/send-sms.js", "use": "@vercel/node" }
   ],
   "routes": [
     { "src": "^/manifest.json$", "dest": "/manifest.json" },
@@ -23,6 +24,7 @@
     { "src": "^/api/get(.*)$", "dest": "/api/get-report.js" },
     { "src": "^/api/import(.*)$", "dest": "/api/import-data.js" },
     { "src": "^/api/save(.*)$", "dest": "/api/save-report.js" },
+    { "src": "^/api/send(.*)$", "dest": "/api/send-sms.js" },
     { "src": "/(.*)", "dest": "/server.js" }
   ]
 }

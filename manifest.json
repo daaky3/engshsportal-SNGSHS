@@ -1,8 +1,8 @@
 {
-  "name": "Serwaah Nyarko Portal - Official System",
+  "name": "Serwaah Nyarko Girls' School Portal",
   "short_name": "Serwaah Portal",
-  "description": "Official Serwaah Nyarko Portal System for student and class management",
-  "start_url": "/index.html",
+  "description": "Progressive Web App for student and class management",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

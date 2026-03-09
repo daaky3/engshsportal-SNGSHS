@@ -13,10 +13,12 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231e3a8a' width='192' height='192'/><text x='50%' y='50%' font-size='120' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231e3a8a' width='180' height='180'/><text x='50%' y='50%' font-size='100' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <title>Serwaah Nyarko Portal - Official System</title>
-    <!-- Firebase SDK - Compat version via unpkg CDN -->
-    <script defer src="https://unpkg.com/firebase@10.7.0/firebase-compat-app.js"></script>
-    <script defer src="https://unpkg.com/firebase@10.7.0/firebase-compat-auth.js"></script>
-    <script defer src="https://unpkg.com/firebase@10.7.0/firebase-compat-firestore.js"></script>
+    <!-- Custom Authentication - No external CDN needed -->
+    <script>
+      // Global auth state
+      window.currentUser = null;
+      window.currentToken = null;
+    </script>
     <!-- Third-party Libraries -->
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
@@ -1195,112 +1197,105 @@
     
     updateLoadingStatus('Loading required libraries...');
 
-    // ===== FIREBASE INITIALIZATION (Global Scope) =====
-    // Declare Firebase variables globally
-    let firebaseApp = null;
-    let firebaseAuth = null;
-    let firebaseDb = null;
-
-    // Async initialization IIFE
-    (async function initializeFirebase() {
-      const firebaseConfig = {
-        apiKey: "AIzaSyCbd6nFbdypbzQo2ZuYUo1UCBhShXkB_dk",
-        authDomain: "sengshsportal.firebaseapp.com",
-        projectId: "sengshsportal",
-        storageBucket: "sengshsportal.firebasestorage.app",
-        messagingSenderId: "215579304323",
-        appId: "1:215579304323:web:53834338c8d6e7f25456b6",
-        measurementId: "G-NDFMDLF2XY"
-      };
-
-      try {
-        console.log('⏳ Waiting for Firebase SDK to load from CDN...');
-        // Wait for Firebase to load - increased timeout to 15 seconds
-        let waitAttempts = 0;
-        const maxAttempts = 60; // 60 * 250ms = 15 seconds
-        
-        while (typeof firebase === 'undefined' && waitAttempts < maxAttempts) {
-          await new Promise(r => setTimeout(r, 250));
-          waitAttempts++;
-          if (waitAttempts % 4 === 0) { // Log every 1 second
-            console.log(`⏳ Still waiting for Firebase... (${(waitAttempts * 250 / 1000).toFixed(1)}s)`);
-          }
-        }
-
-        if (typeof firebase === 'undefined') {
-          console.error('❌ Firebase object not found after', maxAttempts * 250 + 'ms');
-          console.error('Common causes: CDN blocked, network issue, or browser extension blocking scripts');
-          throw new Error('Firebase SDK failed to load from CDN - check network tab in DevTools');
-        }
-
-        console.log('✅ Firebase SDK loaded! Initializing...');
-        // Initialize Firebase (using global variables)
-        firebaseApp = firebase.initializeApp(firebaseConfig);
-        firebaseAuth = firebase.auth();
-        firebaseDb = firebase.firestore();
-        console.log('✅ Firebase initialized successfully');
-        updateLoadingStatus('Firebase initialized');
-      } catch (error) {
-        console.error('❌ Firebase initialization error:', error);
-        updateLoadingStatus('Firebase error - see console');
-      }
-    })();
-
-    // Create helper for authentication (after async init)
+    // ===== CUSTOM AUTHENTICATION API (No Firebase CDN needed) =====
     window.firebaseAuthHelpers = {
-      async signUp(email, password) {
+      async signUp(email, password, name) {
         try {
-          if (!firebaseAuth) throw new Error('Firebase not initialized');
-          const userCred = await firebaseAuth.createUserWithEmailAndPassword(email, password);
-          console.log('✅ Sign up successful:', userCred.user.email);
-          return { success: true, user: userCred.user, uid: userCred.user.uid };
+          console.log('📝 Signing up user:', email);
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, name, action: 'signup' })
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Signup failed');
+
+          window.currentUser = data.user;
+          window.currentToken = data.token;
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('currentUser', JSON.stringify(data.user));
+          
+          console.log('✅ Sign up successful:', email);
+          return { success: true, user: data.user, uid: data.user.uid };
         } catch (error) {
-          console.error('Sign up error:', error.message);
+          console.error('❌ Sign up error:', error.message);
           return { success: false, error: error.message };
         }
       },
 
       async login(email, password) {
         try {
-          if (!firebaseAuth) throw new Error('Firebase not initialized');
-          const userCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
-          console.log('✅ Login successful:', userCred.user.email);
-          return { success: true, user: userCred.user, uid: userCred.user.uid };
+          console.log('🔑 Logging in user:', email);
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, action: 'login' })
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Login failed');
+
+          window.currentUser = data.user;
+          window.currentToken = data.token;
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('currentUser', JSON.stringify(data.user));
+          
+          console.log('✅ Login successful:', email);
+          return { success: true, user: data.user, uid: data.user.uid };
         } catch (error) {
-          console.error('Login error:', error.message);
+          console.error('❌ Login error:', error.message);
           return { success: false, error: error.message };
         }
       },
 
       async logout() {
         try {
-          if (!firebaseAuth) throw new Error('Firebase not initialized');
-          await firebaseAuth.signOut();
+          await fetch('/api/auth', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${window.currentToken}`
+            },
+            body: JSON.stringify({ action: 'logout' })
+          });
+
+          window.currentUser = null;
+          window.currentToken = null;
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          
           console.log('✅ Logout successful');
           return { success: true };
         } catch (error) {
-          console.error('Logout error:', error.message);
+          console.error('❌ Logout error:', error.message);
           return { success: false, error: error.message };
         }
       },
 
       getCurrentUser() {
-        return firebaseAuth?.currentUser || null;
+        return window.currentUser;
       },
 
       async getToken() {
-        try {
-          const user = firebaseAuth?.currentUser;
-          if (!user) return null;
-          return await user.getIdToken();
-        } catch (error) {
-          console.error('Error getting token:', error);
-          return null;
-        }
+        return window.currentToken;
       }
     };
 
-    console.log('%c🚀 Firebase Auth Helpers Ready', 'color: #10b981; font-size: 12px; font-weight: bold;');
+    // Restore session from localStorage on page load
+    function restoreSession() {
+      const token = localStorage.getItem('authToken');
+      const user = localStorage.getItem('currentUser');
+      if (token && user) {
+        window.currentToken = token;
+        window.currentUser = JSON.parse(user);
+        console.log('✅ Session restored for:', window.currentUser.email);
+      }
+    }
+
+    restoreSession();
+    console.log('✅ Authentication API Ready - No CDN Required');
+    updateLoadingStatus('Authentication ready');
 </script>
 
 <div id="reportPortalContainer" style="display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; overflow-x: hidden; overflow-y: auto; box-sizing: border-box;">
@@ -8342,7 +8337,7 @@ Full report: ${portalUrl}?code=[CODE]`;
             }
             
             // Use Firebase sign up helper
-            const result = await window.firebaseAuthHelpers.signUp(email, password);
+            const result = await window.firebaseAuthHelpers.signUp(email, password, name);
             
             if (result.success) {
                 console.log('✅ Firebase account created:', result.user.email);

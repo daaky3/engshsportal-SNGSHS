@@ -1288,7 +1288,43 @@
 
     restoreSession();
     console.log('✅ Supabase Authentication Ready');
-    updateLoadingStatus('Authentication ready');
+    
+    // ===== SUPABASE DATA SYNC =====
+    // Helper function to save data to Supabase
+    window.syncDataToSupabase = async function(action, data) {
+      try {
+        if (!window.currentUser) {
+          console.warn('⚠️ Not logged in - skipping Supabase sync');
+          return false;
+        }
+
+        console.log(`📤 Syncing to Supabase: ${action}, Items:`, Array.isArray(data) ? data.length : 1);
+
+        const response = await fetch('/api/savedata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            data,
+            userId: window.currentUser.uid
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          console.log(`✅ Synced to Supabase: ${result.message}`);
+          return true;
+        } else {
+          console.error(`❌ Supabase sync error: ${result.error}`);
+          return false;
+        }
+      } catch (err) {
+        console.error('❌ Supabase sync error:', err.message);
+        return false;
+      }
+    };
+    updateLoadingStatus('Data sync ready');
 </script>
 
 <div id="reportPortalContainer" style="display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; overflow-x: hidden; overflow-y: auto; box-sizing: border-box;">
@@ -3227,13 +3263,19 @@
         }
         
         if(name && cid) { 
-            await db.students.add({
+            const studentRecord = {
                 name, 
                 classId: cid, 
                 subjectIds: ids, 
                 photo: photo,
                 guardian_phone: guardianPhone || null
-            }); 
+            };
+            
+            await db.students.add(studentRecord);
+            
+            // Sync to Supabase
+            await window.syncDataToSupabase('save_students', studentRecord);
+            
             alert("Student Added"); 
             document.getElementById('stNameInput').value="";
             document.getElementById('stPhotoInput').value="";
@@ -3607,12 +3649,14 @@
             const currentYear = config.year || "";
             const currentSemester = config.semester || "";
             
+            const marksToSync = [];
             let savedCount = 0;
+            
             for(let row of document.querySelectorAll('#resultsGridBody tr')) {
                 const classScore = parseFloat(row.querySelector('.c').value) || 0;
                 const examScore = parseFloat(row.querySelector('.e').value) || 0;
                 
-                await db.marks.put({ 
+                const markRecord = { 
                     studentId: parseInt(row.dataset.sid), 
                     subjectId: sid, 
                     classId: cid,
@@ -3620,10 +3664,19 @@
                     semester: currentSemester, 
                     classScore: classScore, 
                     examScore: examScore 
-                });
+                };
+                
+                await db.marks.put(markRecord);
+                marksToSync.push(markRecord);
                 savedCount++;
             }
-            alert(`✓ Saved ${savedCount} student marks offline!`);
+            
+            // Sync to Supabase in bulk
+            if (marksToSync.length > 0) {
+                await window.syncDataToSupabase('save_results', marksToSync);
+            }
+            
+            alert(`✓ Saved ${savedCount} student marks offline and synced to cloud!`);
         } catch(err) {
             console.error('❌ Error saving marks:', err);
             alert("Error saving marks: " + err.message);
@@ -3782,7 +3835,13 @@
         for(let result of bulkResImportData) {
             await db.marks.put(result);
         }
-        alert(`Successfully imported ${bulkResImportData.length} results!`);
+        
+        // Sync to Supabase in bulk
+        if (bulkResImportData.length > 0) {
+            await window.syncDataToSupabase('save_results', bulkResImportData);
+        }
+        
+        alert(`Successfully imported ${bulkResImportData.length} results and synced to cloud!`);
         document.getElementById('bulkResPreview').style.display = 'none';
         document.getElementById('bulkResUploadFile').value = '';
         bulkResImportData = [];
@@ -6322,22 +6381,33 @@ Full report: ${portalUrl}?code=[CODE]`;
         
         if(currentEditingStudent) {
             // Edit mode
-            await db.students.update(currentEditingStudent.id, {
+            const updatedStudent = {
+                id: currentEditingStudent.id,
                 name,
                 classId,
                 subjectIds,
                 photo: photoData,
                 guardian_phone: guardianPhone || null
-            });
+            };
+            
+            await db.students.update(currentEditingStudent.id, updatedStudent);
+            
+            // Sync to Supabase
+            await window.syncDataToSupabase('save_students', updatedStudent);
         } else {
             // Add mode
-            await db.students.add({
+            const newStudent = {
                 name,
                 classId,
                 subjectIds,
                 photo: photoData,
                 guardian_phone: guardianPhone || null
-            });
+            };
+            
+            await db.students.add(newStudent);
+            
+            // Sync to Supabase
+            await window.syncDataToSupabase('save_students', newStudent);
         }
         
         closeStudentModal();

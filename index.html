@@ -14,9 +14,9 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231e3a8a' width='180' height='180'/><text x='50%' y='50%' font-size='100' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='Arial'>SP</text></svg>">
     <title>Serwaah Nyarko Portal - Official System</title>
     <!-- Firebase SDK - Compat version (works without modules) -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-compat-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-compat-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-compat-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.0/firebase-compat-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.0/firebase-compat-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.0/firebase-compat-firestore.js"></script>
     <!-- Third-party Libraries -->
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
@@ -1214,17 +1214,26 @@
       };
 
       try {
-        // Wait for Firebase to load
+        console.log('⏳ Waiting for Firebase SDK to load from CDN...');
+        // Wait for Firebase to load - increased timeout to 15 seconds
         let waitAttempts = 0;
-        while (typeof firebase === 'undefined' && waitAttempts < 20) {
+        const maxAttempts = 60; // 60 * 250ms = 15 seconds
+        
+        while (typeof firebase === 'undefined' && waitAttempts < maxAttempts) {
           await new Promise(r => setTimeout(r, 250));
           waitAttempts++;
+          if (waitAttempts % 4 === 0) { // Log every 1 second
+            console.log(`⏳ Still waiting for Firebase... (${(waitAttempts * 250 / 1000).toFixed(1)}s)`);
+          }
         }
 
         if (typeof firebase === 'undefined') {
-          throw new Error('Firebase SDK failed to load from CDN');
+          console.error('❌ Firebase object not found after', maxAttempts * 250 + 'ms');
+          console.error('Common causes: CDN blocked, network issue, or browser extension blocking scripts');
+          throw new Error('Firebase SDK failed to load from CDN - check network tab in DevTools');
         }
 
+        console.log('✅ Firebase SDK loaded! Initializing...');
         // Initialize Firebase (using global variables)
         firebaseApp = firebase.initializeApp(firebaseConfig);
         firebaseAuth = firebase.auth();

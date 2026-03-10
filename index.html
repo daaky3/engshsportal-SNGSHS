@@ -3658,36 +3658,6 @@
         observer.observe(document.body, { attributes: true, subtree: true });
     });
 
-
-        try {
-            const cid = parseInt(document.getElementById('bulkClassSelect').value);
-            if(!cid) { alert("Please select a class first"); return; }
-            
-            const cls = await db.classes.get(cid);
-            if(!cls) { alert("Class not found"); return; }
-            
-            const subjs = await db.subjects.toArray();
-            const classSubjects = subjs.filter(s => cls.defaultSubjectIds.includes(s.id)).map(s => s.name).join(", ");
-            
-            if(!window.XLSX) { alert("Excel library not loaded. Please refresh the page."); return; }
-            
-            const wb = XLSX.utils.book_new();
-            const wsData = [
-                ["Student Name", "Guardian Phone", "Class", "Subjects"],
-                ...Array(20).fill(null).map(() => ["", "", cls.name, classSubjects])
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-            ws['!cols'] = [{wch: 25}, {wch: 20}, {wch: 20}, {wch: 40}];
-            
-            XLSX.utils.book_append_sheet(wb, ws, "Students");
-            XLSX.writeFile(wb, `${cls.name}_Students_Template.xlsx`);
-            alert("Template downloaded successfully!");
-        } catch(err) {
-            alert("Error: " + err.message);
-            console.error(err);
-        }
-    }
-
     let bulkImportData = [];
     async function handleBulkUpload() {
         const file = document.getElementById('bulkUploadFile').files[0];

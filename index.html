@@ -2716,14 +2716,29 @@
     // ============================================
     const SUPABASE_API = '/api/data';
 
+    // Helper: Convert camelCase to snake_case
+    function camelToSnake(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        const newObj = Array.isArray(obj) ? [] : {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+                const value = obj[key];
+                newObj[snakeKey] = value && typeof value === 'object' ? camelToSnake(value) : value;
+            }
+        }
+        return newObj;
+    }
+
     // Create a Supabase table adapter
     function createTableAdapter(tableName) {
         return {
             async toArray() {
                 try {
                     const response = await fetch(`${SUPABASE_API}?table=${tableName}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const result = await response.json();
-                    return result.success ? result.data : [];
+                    return result.success && result.data ? result.data : [];
                 } catch (err) {
                     console.error(`❌ Error fetching ${tableName}:`, err);
                     return [];
@@ -2732,14 +2747,16 @@
 
             async add(record) {
                 try {
+                    const convertedRecord = camelToSnake(record);
                     const response = await fetch(SUPABASE_API, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ table: tableName, record })
+                        body: JSON.stringify({ table: tableName, record: convertedRecord })
                     });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const result = await response.json();
-                    if (result.success) return result.data.id;
-                    throw new Error(result.error);
+                    if (result.success && result.data) return result.data.id;
+                    throw new Error(result.error || 'Unknown error');
                 } catch (err) {
                     console.error(`❌ Error adding to ${tableName}:`, err);
                     throw err;
@@ -2749,7 +2766,8 @@
             async put(record) { // Same as add for upsert behavior
                 try {
                     if (record.id) {
-                        return await this.update(record.id, record);
+                        const { id, ...updates } = record;
+                        return await this.update(id, updates);
                     }
                     return await this.add(record);
                 } catch (err) {
@@ -2761,8 +2779,9 @@
             async get(id) {
                 try {
                     const response = await fetch(`${SUPABASE_API}?table=${tableName}&id=${id}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const result = await response.json();
-                    return result.success ? result.data : null;
+                    return result.success && result.data ? result.data : null;
                 } catch (err) {
                     console.error(`❌ Error getting from ${tableName}:`, err);
                     return null;
@@ -2771,14 +2790,16 @@
 
             async update(id, updates) {
                 try {
+                    const convertedUpdates = camelToSnake(updates);
                     const response = await fetch(SUPABASE_API, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ table: tableName, id, updates })
+                        body: JSON.stringify({ table: tableName, id, updates: convertedUpdates })
                     });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const result = await response.json();
-                    if (result.success) return result.data.id;
-                    throw new Error(result.error);
+                    if (result.success && result.data) return result.data.id;
+                    throw new Error(result.error || 'Unknown error');
                 } catch (err) {
                     console.error(`❌ Error updating ${tableName}:`, err);
                     throw err;
@@ -2792,9 +2813,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ table: tableName, id })
                     });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const result = await response.json();
                     if (result.success) return true;
-                    throw new Error(result.error);
+                    throw new Error(result.error || 'Unknown error');
                 } catch (err) {
                     console.error(`❌ Error deleting from ${tableName}:`, err);
                     throw err;
@@ -3108,10 +3130,11 @@
                     try {
                         const newId = numericToUUID(s.id);
                         idMapping.subjects[s.id] = newId;
-                        await db.subjects.put({
+                        const cleanedSubject = camelToSnake({
                             ...s,
                             id: newId
                         });
+                        await db.subjects.put(cleanedSubject);
                         stats.subjects++;
                     } catch (e) {
                         console.error('Error adding subject:', s, e);
@@ -3129,10 +3152,11 @@
                     try {
                         const newId = numericToUUID(c.id);
                         idMapping.classes[c.id] = newId;
-                        await db.classes.put({
+                        const cleanedClass = camelToSnake({
                             ...c,
                             id: newId
                         });
+                        await db.classes.put(cleanedClass);
                         stats.classes++;
                     } catch (e) {
                         console.error('Error adding class:', c, e);
@@ -3151,14 +3175,16 @@
                         const newId = numericToUUID(st.id);
                         idMapping.students[st.id] = newId;
                         
-                        // Convert classId if it exists
-                        const newClassId = st.classId ? idMapping.classes[st.classId] : null;
+                        // Convert classId if it exists  
+                        const newClassId = st.classId ? idMapping.classes[st.classId] : (st.class_id ? idMapping.classes[st.class_id] : null);
                         
-                        await db.students.put({
+                        const cleanedStudent = camelToSnake({
                             ...st,
                             id: newId,
-                            class_id: newClassId || st.class_id
+                            classId: newClassId,
+                            class_id: newClassId
                         });
+                        await db.students.put(cleanedStudent);
                         stats.students++;
                     } catch (e) {
                         console.error('Error adding student:', st, e);
@@ -3174,11 +3200,16 @@
                 for (const mark of marks) {
                     if (!mark) continue;
                     try {
-                        const convertedMark = {
+                        const studentId = idMapping.students[mark.studentId] || numericToUUID(mark.studentId) || mark.student_id;
+                        const subjectId = idMapping.subjects[mark.subjectId] || numericToUUID(mark.subjectId) || mark.subject_id;
+                        
+                        const convertedMark = camelToSnake({
                             ...mark,
-                            student_id: idMapping.students[mark.studentId] || numericToUUID(mark.studentId) || mark.student_id,
-                            subject_id: idMapping.subjects[mark.subjectId] || numericToUUID(mark.subjectId) || mark.subject_id
-                        };
+                            studentId,
+                            subjectId,
+                            student_id: studentId,
+                            subject_id: subjectId
+                        });
                         await db.marks.put(convertedMark);
                         stats.marks++;
                     } catch (e) {
@@ -3195,7 +3226,8 @@
                 for (const conf of config) {
                     if (!conf) continue;
                     try {
-                        await db.config.put(conf);
+                        const cleanedConfig = camelToSnake(conf);
+                        await db.config.put(cleanedConfig);
                         stats.config++;
                     } catch (e) {
                         console.error('Error adding config:', conf, e);
@@ -3211,13 +3243,18 @@
                 for (const promo of promotion_history) {
                     if (!promo) continue;
                     try {
-                        const convertedPromo = {
+                        const studentId = idMapping.students[promo.studentId] || numericToUUID(promo.studentId) || promo.student_id;
+                        const fromClassId = promo.from_class_id ? (idMapping.classes[promo.from_class_id] || numericToUUID(promo.from_class_id)) : null;
+                        const toClassId = promo.to_class_id ? (idMapping.classes[promo.to_class_id] || numericToUUID(promo.to_class_id)) : null;
+                        
+                        const convertedPromo = camelToSnake({
                             ...promo,
                             id: numericToUUID(promo.id),
-                            student_id: idMapping.students[promo.studentId] || numericToUUID(promo.studentId) || promo.student_id,
-                            from_class_id: promo.from_class_id ? (idMapping.classes[promo.from_class_id] || numericToUUID(promo.from_class_id)) : null,
-                            to_class_id: promo.to_class_id ? (idMapping.classes[promo.to_class_id] || numericToUUID(promo.to_class_id)) : null
-                        };
+                            studentId,
+                            student_id: studentId,
+                            from_class_id: fromClassId,
+                            to_class_id: toClassId
+                        });
                         await db.promotion_history.put(convertedPromo);
                         stats.promotion++;
                     } catch (e) {

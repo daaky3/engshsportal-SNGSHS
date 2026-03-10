@@ -6,7 +6,7 @@
 
 -- 1. SUBJECTS TABLE
 CREATE TABLE IF NOT EXISTS subjects (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS subjects (
 
 -- 2. CLASSES TABLE
 CREATE TABLE IF NOT EXISTS classes (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL UNIQUE,
     department VARCHAR(255),
     year VARCHAR(50),
@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS classes (
 
 -- 3. STUDENTS TABLE
 CREATE TABLE IF NOT EXISTS students (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    class_id BIGINT REFERENCES classes(id) ON DELETE SET NULL,
+    class_id UUID REFERENCES classes(id) ON DELETE SET NULL,
     subject_ids TEXT, -- JSON array of subject IDs
     guardian_phone VARCHAR(20),
     photo_url TEXT,
@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS students (
 
 -- 4. MARKS TABLE
 CREATE TABLE IF NOT EXISTS marks (
-    student_id BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    subject_id BIGINT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
     academic_year VARCHAR(50) NOT NULL,
     semester VARCHAR(50) NOT NULL,
     class_mark DECIMAL(5,2),
@@ -60,10 +60,10 @@ CREATE TABLE IF NOT EXISTS config (
 
 -- 6. PROMOTION HISTORY TABLE
 CREATE TABLE IF NOT EXISTS promotion_history (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    student_id BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    from_class_id BIGINT REFERENCES classes(id),
-    to_class_id BIGINT REFERENCES classes(id),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    from_class_id UUID REFERENCES classes(id),
+    to_class_id UUID REFERENCES classes(id),
     academic_year VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS promotion_history (
 
 -- 7. REPORT LINKS TABLE
 CREATE TABLE IF NOT EXISTS report_links (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    student_id BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     report_code VARCHAR(255) UNIQUE NOT NULL,
     academic_year VARCHAR(50),
     semester VARCHAR(50),
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS report_links (
 
 -- 8. USERS TABLE (for login)
 CREATE TABLE IF NOT EXISTS users (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     staff_id VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     name VARCHAR(255),

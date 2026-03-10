@@ -37,15 +37,16 @@ module.exports = async (req, res) => {
         const { data, error } = await supabase
           .from(table)
           .select('*')
-          .eq(filterColumn, id)
-          .single();
+          .eq(filterColumn, id);
         
         if (error) {
           console.error(`[DATA API] GET error for ${table} ${filterColumn}=${id}:`, error);
           return res.status(500).json({ error: error.message, code: error.code });
         }
         
-        return res.status(200).json({ success: true, data });
+        // Return single record or null if not found
+        const record = data && data.length > 0 ? data[0] : null;
+        return res.status(200).json({ success: true, data: record });
       }
       
       // Fetch all records
@@ -79,11 +80,10 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: error.message, code: error.code, details: error.details });
       }
       
-      // For config table, return the 'key' field; for others return 'id'
-      const returnedRecord = data[0];
-      const returnValue = table === 'config' ? returnedRecord.key : returnedRecord.id;
+      // Return the created record
+      const returnedRecord = data && data.length > 0 ? data[0] : null;
       
-      return res.status(201).json({ success: true, data: { id: returnValue, ...returnedRecord } });
+      return res.status(201).json({ success: true, data: returnedRecord });
     }
 
     // PUT - Update record
@@ -109,7 +109,9 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: error.message, code: error.code, details: error.details });
       }
       
-      return res.status(200).json({ success: true, data: data[0] });
+      // Return updated record or null if not found
+      const record = data && data.length > 0 ? data[0] : null;
+      return res.status(200).json({ success: true, data: record });
     }
 
     // DELETE - Delete record

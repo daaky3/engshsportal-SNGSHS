@@ -132,15 +132,20 @@ module.exports = async (req, res) => {
       }
 
       // Get user profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', data.user.id)
-        .single();
+        .eq('id', data.user.id);
 
       if (profileError) {
         console.error('[Supabase Auth] Profile fetch error:', profileError.message);
         return res.status(400).json({ error: profileError.message });
+      }
+
+      const profile = profileData && profileData.length > 0 ? profileData[0] : null;
+      if (!profile) {
+        console.error('[Supabase Auth] No profile found for user:', data.user.id);
+        return res.status(400).json({ error: 'User profile not found' });
       }
 
       console.log('[Supabase Auth] Login successful:', email);

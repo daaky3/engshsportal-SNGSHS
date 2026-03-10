@@ -1822,40 +1822,13 @@
                     </div>
                     <button class="btn btn-primary" style="margin-top:10px;" onclick="handleBulkTeacherUpload()">Preview & Import</button>
                     <div id="bulkTeacherPreview" style="margin-top:15px; display:none; background:#f1f5f9; padding:15px; border-radius:6px; border: 1px solid var(--border);"></div>
-                            <button class="btn btn-primary" id="bulkTeacherImportBtn" style="margin-top:10px; display:none;" onclick="importBulkTeachers()">Import Teachers</button>
-                    async function importBulkTeachers() {
-                        if(!bulkTeacherImportData || bulkTeacherImportData.length === 0) {
-                            alert("No valid teacher records to import.");
-                            return;
-                        }
-                        // Simple verification: check required fields
-                        const invalid = bulkTeacherImportData.filter(t => !t.surname || !t.first_name || !t.phone || !t.main_subject);
-                        if(invalid.length > 0) {
-                            alert("Some records are missing required fields. Please check the preview.");
-                            return;
-                        }
-                        // Send to backend
-                        try {
-                            const response = await fetch('/api/teachers', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ teachers: bulkTeacherImportData })
-                            });
-                            const result = await response.json();
-                            if(result.success) {
-                                alert("Teachers imported successfully!");
-                                document.getElementById('bulkTeacherPreview').style.display = 'none';
-                                document.getElementById('bulkTeacherImportBtn').style.display = 'none';
-                                bulkTeacherImportData = [];
-                            } else {
-                                alert("Import failed: " + (result.error || 'Unknown error'));
-                            }
-                        } catch(err) {
-                            alert("Error: " + err.message);
-                        }
-                    }
+                    <button class="btn btn-primary" id="bulkTeacherImportBtn" style="margin-top:10px; display:none;" onclick="importBulkTeachers()">Import Teachers</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="students" class="section">
         <h1>Student Entry</h1>
         <div class="card">
             <h3 style="margin-top:0; color: var(--primary);">Single Student Entry</h3>
@@ -3411,6 +3384,95 @@
             console.error(err);
         }
     }
+
+    // --- ADD SINGLE TEACHER ---
+    async function addTeacher() {
+        try {
+            const surname = document.getElementById('tSurnameInput').value.trim();
+            const firstName = document.getElementById('tFirstNameInput').value.trim();
+            const otherName = document.getElementById('tOtherNameInput').value.trim();
+            const phone = document.getElementById('tPhoneInput').value.trim();
+            const mainSubject = document.getElementById('tMainSubjectInput').value.trim();
+            const otherSubjects = document.getElementById('tOtherSubjectsInput').value.trim();
+
+            if(!surname || !firstName || !phone || !mainSubject) {
+                alert("Please fill in all required fields: Surname, First Name, Phone, Main Subject");
+                return;
+            }
+
+            // Validate phone format
+            if(!phone.match(/^\d{10}$/)) {
+                alert("Phone number should be 10 digits (without +233 or 0)");
+                return;
+            }
+
+            const response = await fetch('/api/teachers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    teachers: [{
+                        surname,
+                        first_name: firstName,
+                        other_name: otherName,
+                        phone,
+                        main_subject: mainSubject,
+                        other_subjects: otherSubjects
+                    }]
+                })
+            });
+
+            const result = await response.json();
+            if(result.success) {
+                alert("Teacher registered successfully!");
+                document.getElementById('tSurnameInput').value = '';
+                document.getElementById('tFirstNameInput').value = '';
+                document.getElementById('tOtherNameInput').value = '';
+                document.getElementById('tPhoneInput').value = '';
+                document.getElementById('tMainSubjectInput').value = '';
+                document.getElementById('tOtherSubjectsInput').value = '';
+            } else {
+                alert("Failed to register teacher: " + (result.error || 'Unknown error'));
+            }
+        } catch(err) {
+            alert("Error: " + err.message);
+            console.error(err);
+        }
+    }
+
+    // --- IMPORT BULK TEACHERS ---
+    async function importBulkTeachers() {
+        if(!bulkTeacherImportData || bulkTeacherImportData.length === 0) {
+            alert("No valid teacher records to import.");
+            return;
+        }
+        // Simple verification: check required fields
+        const invalid = bulkTeacherImportData.filter(t => !t.surname || !t.first_name || !t.phone || !t.main_subject);
+        if(invalid.length > 0) {
+            alert("Some records are missing required fields. Please check the preview.");
+            return;
+        }
+        // Send to backend
+        try {
+            const response = await fetch('/api/teachers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teachers: bulkTeacherImportData })
+            });
+            const result = await response.json();
+            if(result.success) {
+                alert("Teachers imported successfully!");
+                document.getElementById('bulkTeacherPreview').style.display = 'none';
+                document.getElementById('bulkTeacherImportBtn').style.display = 'none';
+                document.getElementById('bulkTeacherUploadFile').value = '';
+                bulkTeacherImportData = [];
+            } else {
+                alert("Import failed: " + (result.error || 'Unknown error'));
+            }
+        } catch(err) {
+            alert("Error: " + err.message);
+        }
+    }
+
         try {
             const cid = parseInt(document.getElementById('bulkClassSelect').value);
             if(!cid) { alert("Please select a class first"); return; }

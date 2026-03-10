@@ -1796,58 +1796,55 @@
         </div>
     </div>
 
-    <div id="students" class="section">
-            <div id="teachers" class="section">
-                <h1>Teacher Entry</h1>
-                <div class="card">
-                    <h3 style="margin-top:0; color: var(--primary);">Single Teacher Entry</h3>
-                    <div class="grid-3">
-                        <input type="text" id="tSurnameInput" placeholder="Surname">
-                        <input type="text" id="tFirstNameInput" placeholder="First Name">
-                        <input type="text" id="tOtherNameInput" placeholder="Other Name">
-                    </div>
-                    <div class="grid-3" style="margin-top: 10px;">
-                        <input type="text" id="tPhoneInput" placeholder="Phone Number (0xxxxxxxxx)" style="grid-column: span 3;">
-                        <input type="text" id="tMainSubjectInput" placeholder="Main Subject" style="grid-column: span 3;">
-                        <input type="text" id="tOtherSubjectsInput" placeholder="Other Subjects (comma separated)" style="grid-column: span 3;">
-                    </div>
-                    <button class="btn btn-primary" style="margin-top:10px;" onclick="addTeacher()">Register Teacher</button>
-                </div>
+    <div id="teachers" class="section">
+        <h1>Teacher Entry</h1>
+        <div class="card">
+            <h3 style="margin-top:0; color: var(--primary);">Single Teacher Entry</h3>
+            <div class="grid-3">
+                <input type="text" id="tSurnameInput" placeholder="Surname">
+                <input type="text" id="tFirstNameInput" placeholder="First Name">
+                <input type="text" id="tOtherNameInput" placeholder="Other Name">
+            </div>
+            <div class="grid-3" style="margin-top: 10px;">
+                <input type="text" id="tPhoneInput" placeholder="Phone Number (0xxxxxxxxx)" style="grid-column: span 3;">
+                <input type="text" id="tMainSubjectInput" placeholder="Main Subject" style="grid-column: span 3;">
+                <input type="text" id="tOtherSubjectsInput" placeholder="Other Subjects (comma separated)" style="grid-column: span 3;">
+            </div>
+            <button class="btn btn-primary" style="margin-top:10px;" onclick="addTeacher()">Register Teacher</button>
+        </div>
 
-                <div class="card">
-                    <h3 style="margin-top:0; color: var(--primary);">Bulk Teacher Import</h3>
-                    <div class="grid-3">
-                        <button class="btn btn-primary" onclick="downloadTeacherTemplate()">Download Template</button>
-                        <input type="file" id="bulkTeacherUploadFile" accept=".xlsx" style="padding:8px;">
-                    </div>
-                    <button class="btn btn-primary" style="margin-top:10px;" onclick="handleBulkTeacherUpload()">Preview & Import</button>
-                    <div id="bulkTeacherPreview" style="margin-top:15px; display:none; background:#f1f5f9; padding:15px; border-radius:6px; border: 1px solid var(--border);"></div>
-                    <button class="btn btn-primary" id="bulkTeacherImportBtn" style="margin-top:10px; display:none;" onclick="importBulkTeachers()">Import Teachers</button>
-                </div>
+        <div class="card">
+            <h3 style="margin-top:0; color: var(--primary);">Bulk Teacher Import</h3>
+            <div class="grid-3">
+                <button class="btn btn-primary" onclick="downloadTeacherTemplate()">Download Template</button>
+                <input type="file" id="bulkTeacherUploadFile" accept=".xlsx" style="padding:8px;">
+            </div>
+            <button class="btn btn-primary" style="margin-top:10px;" onclick="handleBulkTeacherUpload()">Preview & Import</button>
+            <div id="bulkTeacherPreview" style="margin-top:15px; display:none; background:#f1f5f9; padding:15px; border-radius:6px; border: 1px solid var(--border);"></div>
+            <button class="btn btn-primary" id="bulkTeacherImportBtn" style="margin-top:10px; display:none;" onclick="importBulkTeachers()">Import Teachers</button>
+        </div>
 
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin:0; color: var(--primary);">Manage Teachers</h3>
-                        <button class="btn btn-primary" onclick="loadAllTeachers()" style="padding: 8px 15px; font-size: 13px;">🔄 Refresh</button>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #f1f5f9; border-bottom: 2px solid var(--primary);">
-                                    <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Surname</th>
-                                    <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">First Name</th>
-                                    <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Phone</th>
-                                    <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Main Subject</th>
-                                    <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Other Subjects</th>
-                                    <th style="padding: 12px; text-align: center; color: var(--primary); font-weight: 600; font-size: 13px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="teachersTableBody">
-                                <tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">Loading teachers...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin:0; color: var(--primary);">Manage Teachers</h3>
+                <button class="btn btn-primary" onclick="loadAllTeachers()" style="padding: 8px 15px; font-size: 13px;">🔄 Refresh</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid var(--primary);">
+                            <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Surname</th>
+                            <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">First Name</th>
+                            <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Phone</th>
+                            <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Main Subject</th>
+                            <th style="padding: 12px; text-align: left; color: var(--primary); font-weight: 600; font-size: 13px;">Other Subjects</th>
+                            <th style="padding: 12px; text-align: center; color: var(--primary); font-weight: 600; font-size: 13px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachersTableBody">
+                        <tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">Loading teachers...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

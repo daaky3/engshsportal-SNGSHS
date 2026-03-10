@@ -177,6 +177,10 @@ ON marks FOR DELETE
 USING (true);
 
 -- Allow authenticated users to insert/update/delete config
+CREATE POLICY "Allow public read on config"
+ON config FOR SELECT
+USING (true);
+
 CREATE POLICY "Allow authenticated insert on config"
 ON config FOR INSERT
 WITH CHECK (true);
@@ -190,6 +194,10 @@ ON config FOR DELETE
 USING (true);
 
 -- Allow authenticated users to insert/update/delete promotion_history
+CREATE POLICY "Allow public read on promotion_history"
+ON promotion_history FOR SELECT
+USING (true);
+
 CREATE POLICY "Allow authenticated insert on promotion_history"
 ON promotion_history FOR INSERT
 WITH CHECK (true);
@@ -203,6 +211,10 @@ ON promotion_history FOR DELETE
 USING (true);
 
 -- Allow authenticated users to insert/update/delete report_links
+CREATE POLICY "Allow public read on report_links"
+ON report_links FOR SELECT
+USING (true);
+
 CREATE POLICY "Allow authenticated insert on report_links"
 ON report_links FOR INSERT
 WITH CHECK (true);

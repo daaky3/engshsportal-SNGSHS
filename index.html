@@ -2799,6 +2799,7 @@
             if(id === 'managestudents') { await loadManageStudentsFilters(); }
             if(id === 'promotion') { await initPromotionWizard(); }
             if(id === 'dashboard') { await loadDashboardYears(); }
+            if(id === 'teachers') await loadAllTeachers();
             if(id === 'settings') await loadSettings();
         } catch(err) {
             console.error('❌ Section Error:', err);

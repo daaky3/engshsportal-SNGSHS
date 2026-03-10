@@ -2732,15 +2732,32 @@
 
     // Create a Supabase table adapter
     function createTableAdapter(tableName) {
+        // Helper to extract error details from failed response
+        async function getErrorMessage(response) {
+            let details = `HTTP ${response.status}`;
+            try {
+                const body = await response.json();
+                if (body.error) details = body.error;
+                if (body.code) details += ` (${body.code})`;
+                if (body.details) details += `: ${body.details}`;
+            } catch (e) {
+                // Response wasn't JSON, just use status
+            }
+            return details;
+        }
+
         return {
             async toArray() {
                 try {
                     const response = await fetch(`${SUPABASE_API}?table=${tableName}`);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (!response.ok) {
+                        const errMsg = await getErrorMessage(response);
+                        throw new Error(errMsg);
+                    }
                     const result = await response.json();
                     return result.success && result.data ? result.data : [];
                 } catch (err) {
-                    console.error(`❌ Error fetching ${tableName}:`, err);
+                    console.error(`❌ Error fetching ${tableName}:`, err.message);
                     return [];
                 }
             },
@@ -2753,7 +2770,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ table: tableName, record: convertedRecord })
                     });
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (!response.ok) {
+                        const errMsg = await getErrorMessage(response);
+                        throw new Error(errMsg);
+                    }
                     const result = await response.json();
                     if (result.success && result.data) return result.data.id;
                     throw new Error(result.error || 'Unknown error');
@@ -2779,11 +2799,14 @@
             async get(id) {
                 try {
                     const response = await fetch(`${SUPABASE_API}?table=${tableName}&id=${id}`);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (!response.ok) {
+                        const errMsg = await getErrorMessage(response);
+                        throw new Error(errMsg);
+                    }
                     const result = await response.json();
                     return result.success && result.data ? result.data : null;
                 } catch (err) {
-                    console.error(`❌ Error getting from ${tableName}:`, err);
+                    console.error(`❌ Error getting from ${tableName}: ${err.message}`);
                     return null;
                 }
             },
@@ -2796,7 +2819,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ table: tableName, id, updates: convertedUpdates })
                     });
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (!response.ok) {
+                        const errMsg = await getErrorMessage(response);
+                        throw new Error(errMsg);
+                    }
                     const result = await response.json();
                     if (result.success && result.data) return result.data.id;
                     throw new Error(result.error || 'Unknown error');
@@ -2813,7 +2839,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ table: tableName, id })
                     });
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    if (!response.ok) {
+                        const errMsg = await getErrorMessage(response);
+                        throw new Error(errMsg);
+                    }
                     const result = await response.json();
                     if (result.success) return true;
                     throw new Error(result.error || 'Unknown error');

@@ -3473,6 +3473,7 @@
                 document.getElementById('tPhoneInput').value = '';
                 document.getElementById('tMainSubjectInput').value = '';
                 document.getElementById('tOtherSubjectsInput').value = '';
+                await loadAllTeachers();
             } else {
                 alert("Failed to register teacher: " + (result.error || 'Unknown error'));
             }
@@ -3508,6 +3509,7 @@
                 document.getElementById('bulkTeacherImportBtn').style.display = 'none';
                 document.getElementById('bulkTeacherUploadFile').value = '';
                 bulkTeacherImportData = [];
+                await loadAllTeachers();
             } else {
                 alert("Import failed: " + (result.error || 'Unknown error'));
             }

@@ -15,10 +15,14 @@ module.exports = async (req, res) => {
 
   try {
     let table = req.query.table;
+    let body = {};
     
-    // Support table from body if not in query
-    if (!table && req.body && req.body.table) {
-      table = req.body.table;
+    // Parse body if present
+    if (req.body) {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      if (!table && body.table) {
+        table = body.table;
+      }
     }
     
     if (!table) {
@@ -46,8 +50,8 @@ module.exports = async (req, res) => {
 
     // POST - Create new record
     if (req.method === 'POST') {
-      const { record } = req.body;
-      if (!record) return res.status(400).json({ error: 'Missing record' });
+      const { record } = body;
+      if (!record) return res.status(400).json({ error: 'Missing record in body' });
       
       const { data, error } = await supabase
         .from(table)
@@ -60,8 +64,8 @@ module.exports = async (req, res) => {
 
     // PUT - Update record
     if (req.method === 'PUT') {
-      const { id, updates } = req.body;
-      if (!id || !updates) return res.status(400).json({ error: 'Missing id or updates' });
+      const { id, updates } = body;
+      if (!id || !updates) return res.status(400).json({ error: 'Missing id or updates in body' });
       
       const { data, error } = await supabase
         .from(table)
@@ -75,8 +79,8 @@ module.exports = async (req, res) => {
 
     // DELETE - Delete record
     if (req.method === 'DELETE') {
-      const { id } = req.body;
-      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const { id } = body;
+      if (!id) return res.status(400).json({ error: 'Missing id in body' });
       
       const { error } = await supabase
         .from(table)

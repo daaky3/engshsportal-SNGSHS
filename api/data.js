@@ -32,15 +32,16 @@ module.exports = async (req, res) => {
       const id = req.query?.id;
       
       if (id) {
-        // Fetch single record
+        // Fetch single record - use 'key' for config table, 'id' for others
+        const filterColumn = table === 'config' ? 'key' : 'id';
         const { data, error } = await supabase
           .from(table)
           .select('*')
-          .eq('id', id)
+          .eq(filterColumn, id)
           .single();
         
         if (error) {
-          console.error(`[DATA API] GET error for ${table} id=${id}:`, error);
+          console.error(`[DATA API] GET error for ${table} ${filterColumn}=${id}:`, error);
           return res.status(500).json({ error: error.message, code: error.code });
         }
         
@@ -78,7 +79,11 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: error.message, code: error.code, details: error.details });
       }
       
-      return res.status(201).json({ success: true, data: data[0] });
+      // For config table, return the 'key' field; for others return 'id'
+      const returnedRecord = data[0];
+      const returnValue = table === 'config' ? returnedRecord.key : returnedRecord.id;
+      
+      return res.status(201).json({ success: true, data: { id: returnValue, ...returnedRecord } });
     }
 
     // PUT - Update record
@@ -91,10 +96,12 @@ module.exports = async (req, res) => {
       
       console.log(`[DATA API] Updating ${table} id=${id}:`, Object.keys(updates));
       
+      // Use 'key' for config table, 'id' for others
+      const filterColumn = table === 'config' ? 'key' : 'id';
       const { data, error } = await supabase
         .from(table)
         .update(updates)
-        .eq('id', id)
+        .eq(filterColumn, id)
         .select();
       
       if (error) {
@@ -115,10 +122,12 @@ module.exports = async (req, res) => {
       
       console.log(`[DATA API] Deleting from ${table} id=${id}`);
       
+      // Use 'key' for config table, 'id' for others
+      const filterColumn = table === 'config' ? 'key' : 'id';
       const { error } = await supabase
         .from(table)
         .delete()
-        .eq('id', id);
+        .eq(filterColumn, id);
       
       if (error) {
         console.error(`[DATA API] DELETE error for ${table}:`, error);

@@ -2775,10 +2775,14 @@
                         throw new Error(errMsg);
                     }
                     const result = await response.json();
+                    if (result.error) {
+                        const errMsg = typeof result.error === 'string' ? result.error : JSON.stringify(result.error);
+                        throw new Error(`Supabase error: ${errMsg}${result.code ? ` (${result.code})` : ''}`);
+                    }
                     if (result.success && result.data) return result.data.id;
-                    throw new Error(result.error || 'Unknown error');
+                    throw new Error(result.error ? JSON.stringify(result.error) : 'Unknown error in add');
                 } catch (err) {
-                    console.error(`❌ Error adding to ${tableName}:`, err);
+                    console.error(`❌ Error adding to ${tableName}:`, err.message);
                     throw err;
                 }
             },
@@ -2824,10 +2828,14 @@
                         throw new Error(errMsg);
                     }
                     const result = await response.json();
+                    if (result.error) {
+                        const errMsg = typeof result.error === 'string' ? result.error : JSON.stringify(result.error);
+                        throw new Error(`Supabase error: ${errMsg}${result.code ? ` (${result.code})` : ''}`);
+                    }
                     if (result.success && result.data) return result.data.id;
-                    throw new Error(result.error || 'Unknown error');
+                    throw new Error(result.error ? JSON.stringify(result.error) : 'Unknown error in update');
                 } catch (err) {
-                    console.error(`❌ Error updating ${tableName}:`, err);
+                    console.error(`❌ Error updating ${tableName}:`, err.message);
                     throw err;
                 }
             },

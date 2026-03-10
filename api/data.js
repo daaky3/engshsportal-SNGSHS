@@ -5,6 +5,7 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 module.exports = async (req, res) => {
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,58 +15,81 @@ module.exports = async (req, res) => {
   }
 
   try {
-    let table = req.query.table;
-    let body = {};
-    
-    // Parse body if present
-    if (req.body) {
-      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      if (!table && body.table) {
-        table = body.table;
-      }
-    }
+    // Get table name from query or body
+    let table = req.query?.table || req.body?.table;
     
     if (!table) {
       return res.status(400).json({ error: 'Missing table parameter' });
     }
 
+    console.log(`[DATA API] ${req.method} ${table}`, { 
+      id: req.query?.id, 
+      bodyKeys: req.body ? Object.keys(req.body) : [] 
+    });
+
     // GET - Fetch all records or specific record
     if (req.method === 'GET') {
-      const { id } = req.query;
+      const id = req.query?.id;
       
       if (id) {
+        // Fetch single record
         const { data, error } = await supabase
           .from(table)
           .select('*')
           .eq('id', id)
           .single();
-        if (error) return res.status(500).json({ error: error.message });
+        
+        if (error) {
+          console.error(`[DATA API] GET error for ${table} id=${id}:`, error);
+          return res.status(500).json({ error: error.message, code: error.code });
+        }
+        
         return res.status(200).json({ success: true, data });
       }
       
+      // Fetch all records
       const { data, error } = await supabase.from(table).select('*');
-      if (error) return res.status(500).json({ error: error.message });
+      
+      if (error) {
+        console.error(`[DATA API] GET all error for ${table}:`, error);
+        return res.status(500).json({ error: error.message, code: error.code });
+      }
+      
       return res.status(200).json({ success: true, data });
     }
 
     // POST - Create new record
     if (req.method === 'POST') {
-      const { record } = body;
-      if (!record) return res.status(400).json({ error: 'Missing record in body' });
+      const record = req.body?.record;
+      
+      if (!record) {
+        return res.status(400).json({ error: 'Missing record in body' });
+      }
+      
+      console.log(`[DATA API] Inserting into ${table}:`, Object.keys(record));
       
       const { data, error } = await supabase
         .from(table)
         .insert([record])
         .select();
       
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) {
+        console.error(`[DATA API] POST error for ${table}:`, error);
+        return res.status(500).json({ error: error.message, code: error.code, details: error.details });
+      }
+      
       return res.status(201).json({ success: true, data: data[0] });
     }
 
     // PUT - Update record
     if (req.method === 'PUT') {
-      const { id, updates } = body;
-      if (!id || !updates) return res.status(400).json({ error: 'Missing id or updates in body' });
+      const { id, updates } = req.body || {};
+      
+      if (!id || !updates) {
+        return res.status(400).json({ error: 'Missing id or updates in body' });
+      }
+      
+      console.log(`[DATA API] Updating ${table} id=${id}:`, Object.keys(updates));
       
       const { data, error } = await supabase
         .from(table)
@@ -73,27 +97,45 @@ module.exports = async (req, res) => {
         .eq('id', id)
         .select();
       
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) {
+        console.error(`[DATA API] PUT error for ${table}:`, error);
+        return res.status(500).json({ error: error.message, code: error.code, details: error.details });
+      }
+      
       return res.status(200).json({ success: true, data: data[0] });
     }
 
     // DELETE - Delete record
     if (req.method === 'DELETE') {
-      const { id } = body;
-      if (!id) return res.status(400).json({ error: 'Missing id in body' });
+      const id = req.body?.id;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Missing id in body' });
+      }
+      
+      console.log(`[DATA API] Deleting from ${table} id=${id}`);
       
       const { error } = await supabase
         .from(table)
         .delete()
         .eq('id', id);
       
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) {
+        console.error(`[DATA API] DELETE error for ${table}:`, error);
+        return res.status(500).json({ error: error.message, code: error.code });
+      }
+      
       return res.status(200).json({ success: true });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
+    
   } catch (err) {
-    console.error('API Error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('[DATA API] Uncaught error:', err);
+    return res.status(500).json({ 
+      error: err.message,
+      type: err.constructor.name,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };

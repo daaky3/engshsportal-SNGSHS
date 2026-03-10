@@ -86,14 +86,27 @@ module.exports = async (req, res) => {
         .from('users')
         .insert([{
           id: data.user.id,
-          email,
+          email: normalizedEmail,
           name,
           role: 'staff'
         }]);
 
       if (profileError) {
         console.error('[Supabase Auth] Profile creation error:', profileError.message);
-        return res.status(400).json({ error: profileError.message });
+        // Try upsert if insert fails (in case profile already exists)
+        const { error: upsertError } = await supabase
+          .from('users')
+          .upsert([{
+            id: data.user.id,
+            email: normalizedEmail,
+            name,
+            role: 'staff'
+          }]);
+        
+        if (upsertError) {
+          console.error('[Supabase Auth] Upsert error:', upsertError.message);
+          return res.status(400).json({ error: 'Failed to create user profile' });
+        }
       }
 
       console.log('[Supabase Auth] Signup successful:', email);
@@ -132,20 +145,55 @@ module.exports = async (req, res) => {
       }
 
       // Get user profile
-      const { data: profileData, error: profileError } = await supabase
+      let { data: profileData, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', data.user.id);
 
       if (profileError) {
         console.error('[Supabase Auth] Profile fetch error:', profileError.message);
-        return res.status(400).json({ error: profileError.message });
       }
 
-      const profile = profileData && profileData.length > 0 ? profileData[0] : null;
+      let profile = profileData && profileData.length > 0 ? profileData[0] : null;
+      
+      // If profile doesn't exist, create it
       if (!profile) {
-        console.error('[Supabase Auth] No profile found for user:', data.user.id);
-        return res.status(400).json({ error: 'User profile not found' });
+        console.log('[Supabase Auth] Profile not found, creating one for user:', data.user.id);
+        const { data: newProfile, error: createError } = await supabase
+          .from('users')
+          .insert([{
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.name || 'User',
+            role: 'staff'
+          }])
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('[Supabase Auth] Profile creation error:', createError.message);
+          console.log('[Supabase Auth] Creating profile with upsert instead...');
+          
+          // Try upsert if insert fails
+          const { data: upsertProfile, error: upsertError } = await supabase
+            .from('users')
+            .upsert([{
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.user_metadata?.name || 'User',
+              role: 'staff'
+            }])
+            .select();
+
+          if (upsertError) {
+            console.error('[Supabase Auth] Upsert error:', upsertError.message);
+            // Continue anyway with auth response
+          } else {
+            profile = upsertProfile && upsertProfile.length > 0 ? upsertProfile[0] : null;
+          }
+        } else {
+          profile = newProfile;
+        }
       }
 
       console.log('[Supabase Auth] Login successful:', email);
@@ -154,7 +202,7 @@ module.exports = async (req, res) => {
         user: {
           uid: data.user.id,
           email: data.user.email,
-          name: profile.name
+          name: profile?.name || 'User'
         },
         token: data.session?.access_token,
         message: 'Login successful'

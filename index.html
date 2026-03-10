@@ -2710,58 +2710,148 @@
 </div><!-- End appContainer -->
 
 <script>
-    var db = new Dexie("SerwaahNyarkoOfficial");
-    db.version(1).stores({
-        subjects: "++id, name",
-        classes: "++id, name, department, year, defaultSubjectIds",
-        students: "++id, name, classId, subjectIds",
-        marks: "[studentId+subjectId+academicYear+semester], studentId, subjectId, academicYear, semester",
-        config: "key, value"
-    });
-    db.version(2).stores({
-        subjects: "++id, name",
-        classes: "++id, name, department, year, defaultSubjectIds",
-        students: "++id, name, classId, subjectIds",
-        marks: "[studentId+subjectId+academicYear+semester], studentId, subjectId, academicYear, semester",
-        config: "key, value",
-        promotion_history: "++id, studentId, academicYear"
-    });
-    db.version(3).stores({
-        subjects: "++id, name",
-        classes: "++id, name, department, year, defaultSubjectIds",
-        students: "++id, name, classId, subjectIds",
-        marks: "[studentId+subjectId+academicYear+semester], studentId, subjectId, academicYear, semester",
-        config: "key, value",
-        promotion_history: "++id, studentId, academicYear",
-        report_links: "++id, studentId, reportCode, academicYear, semester"
-    });
-    db.version(4).stores({
-        subjects: "++id, name",
-        classes: "++id, name, department, year, defaultSubjectIds",
-        students: "++id, name, classId, subjectIds",
-        marks: "[studentId+subjectId+academicYear+semester], studentId, subjectId, academicYear, semester",
-        config: "key, value",
-        promotion_history: "++id, studentId, academicYear",
-        report_links: "++id, studentId, reportCode, academicYear, semester",
-        users: "++id, staffId"
-    }).upgrade(tx => {
-        return tx.table('users').count().then(count => {
-            if(count === 0) {
-                return tx.table('users').add({
-                    staffId: '0050139',
-                    password: 'Sengshs24',
-                    name: 'Principal',
-                    role: 'admin',
-                    createdAt: new Date().toISOString()
-                });
-            }
-        });
-    });
+    // ============================================
+    // SUPABASE DATABASE ADAPTER
+    // Provides Dexie-like interface for Supabase
+    // ============================================
+    const SUPABASE_API = '/api/data';
 
-    // Open database before initializing
+    // Create a Supabase table adapter
+    function createTableAdapter(tableName) {
+        return {
+            async toArray() {
+                try {
+                    const response = await fetch(`${SUPABASE_API}?table=${tableName}`);
+                    const result = await response.json();
+                    return result.success ? result.data : [];
+                } catch (err) {
+                    console.error(`❌ Error fetching ${tableName}:`, err);
+                    return [];
+                }
+            },
+
+            async add(record) {
+                try {
+                    const response = await fetch(SUPABASE_API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table: tableName, record })
+                    });
+                    const result = await response.json();
+                    if (result.success) return result.data.id;
+                    throw new Error(result.error);
+                } catch (err) {
+                    console.error(`❌ Error adding to ${tableName}:`, err);
+                    throw err;
+                }
+            },
+
+            async put(record) { // Same as add for upsert behavior
+                try {
+                    if (record.id) {
+                        return await this.update(record.id, record);
+                    }
+                    return await this.add(record);
+                } catch (err) {
+                    console.error(`❌ Error putting to ${tableName}:`, err);
+                    throw err;
+                }
+            },
+
+            async get(id) {
+                try {
+                    const response = await fetch(`${SUPABASE_API}?table=${tableName}&id=${id}`);
+                    const result = await response.json();
+                    return result.success ? result.data : null;
+                } catch (err) {
+                    console.error(`❌ Error getting from ${tableName}:`, err);
+                    return null;
+                }
+            },
+
+            async update(id, updates) {
+                try {
+                    const response = await fetch(SUPABASE_API, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table: tableName, id, updates })
+                    });
+                    const result = await response.json();
+                    if (result.success) return result.data.id;
+                    throw new Error(result.error);
+                } catch (err) {
+                    console.error(`❌ Error updating ${tableName}:`, err);
+                    throw err;
+                }
+            },
+
+            async delete(id) {
+                try {
+                    const response = await fetch(SUPABASE_API, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table: tableName, id })
+                    });
+                    const result = await response.json();
+                    if (result.success) return true;
+                    throw new Error(result.error);
+                } catch (err) {
+                    console.error(`❌ Error deleting from ${tableName}:`, err);
+                    throw err;
+                }
+            },
+
+            async count() {
+                try {
+                    const data = await this.toArray();
+                    return data.length;
+                } catch (err) {
+                    console.error(`❌ Error counting ${tableName}:`, err);
+                    return 0;
+                }
+            },
+
+            async clear() {
+                console.warn(`❌ clear() not supported for ${tableName}. Use Supabase console or API.`);
+            },
+
+            async bulkPut(records) {
+                try {
+                    const results = [];
+                    for (const record of records) {
+                        const res = await this.put(record);
+                        results.push(res);
+                    }
+                    return results;
+                } catch (err) {
+                    console.error(`❌ Error bulk putting to ${tableName}:`, err);
+                    throw err;
+                }
+            }
+        };
+    }
+
+    // Create database adapter object
+    var db = {
+        subjects: createTableAdapter('subjects'),
+        classes: createTableAdapter('classes'),
+        students: createTableAdapter('students'),
+        marks: createTableAdapter('marks'),
+        config: createTableAdapter('config'),
+        promotion_history: createTableAdapter('promotion_history'),
+        report_links: createTableAdapter('report_links'),
+        users: createTableAdapter('users'),
+
+        async open() {
+            console.log('✅ Supabase adapter initialized. Data is now stored on Supabase!');
+            return Promise.resolve();
+        }
+    };
+
+    // Initialize database
     db.open().catch(err => {
         console.error('❌ Database Error:', err);
-        alert('Error: Cannot access database\n\n' + err.message);
+        alert('Error: Cannot connect to database\n\n' + err.message);
     });
 
     // Initialize page on load
@@ -2875,7 +2965,7 @@
                 <p><strong>👥 Students:</strong> ${studentCount} registered</p>
                 <p><strong>📊 Records:</strong> ${markCount} results entries</p>
                 <p><strong>⚙️ Config:</strong> ${configCount} settings</p>
-                <p style="font-size:12px; color:#999; margin-top:10px;">💾 All data is stored locally in your browser's IndexedDB. No server needed.</p>
+                <p style="font-size:12px; color:#999; margin-top:10px;">✅ All data is securely stored on Supabase cloud. Your data syncs across all devices and never gets lost!</p>
             `;
             document.getElementById('dataStatus').innerHTML = html;
         } catch(e) {

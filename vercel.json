@@ -13,6 +13,7 @@
     { "src": "api/save-report.js", "use": "@vercel/node" },
     { "src": "api/send-sms.js", "use": "@vercel/node" },
     { "src": "api/save-data.js", "use": "@vercel/node" },
+    { "src": "api/data.js", "use": "@vercel/node" },
     { "src": "api/teachers.js", "use": "@vercel/node" }
   ],
   "routes": [
@@ -26,6 +27,7 @@
     { "src": "^/api/savedata(.*)$", "dest": "/api/save-data.js" },
     { "src": "^/api/save(.*)$", "dest": "/api/save-report.js" },
     { "src": "^/api/send(.*)$", "dest": "/api/send-sms.js" },
+    { "src": "^/api/data(.*)$", "dest": "/api/data.js" },
     { "src": "^/api/teachers(.*)$", "dest": "/api/teachers.js" },
     { "src": "/(.*)", "dest": "/server.js" }
   ]

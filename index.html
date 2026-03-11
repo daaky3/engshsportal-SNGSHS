@@ -6749,14 +6749,9 @@ Parents can view the complete terminal report by opening the link above.`;
         try {
             updateLoadingStatus('Checking libraries and initializing...');
             
-            // Check for required libraries
-            window.appDiagnostics.dexie = typeof Dexie !== 'undefined';
+            // All data stored in Supabase - no local libraries needed
             window.appDiagnostics.xlsx = typeof XLSX !== 'undefined';
             window.appDiagnostics.chart = typeof Chart !== 'undefined';
-            
-            if (!window.appDiagnostics.dexie) {
-                showDebugPanel('⚠️ WARNING: Dexie not loaded yet, waiting...');
-            }
             
             // Check for report code FIRST - public reports don't need login
             const urlParams = new URLSearchParams(window.location.search);

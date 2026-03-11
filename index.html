@@ -3248,12 +3248,12 @@
                         const record = {
                             student_id: studentId,
                             subject_id: subjectId,
-                            class_score: mark.classScore || 0,
-                            exam_score: mark.examScore || 0,
+                            class_mark: mark.classScore || 0,
+                            exam_mark: mark.examScore || 0,
                             academic_year: mark.academicYear || '',
                             semester: mark.semester || '',
                             total: mark.total || 0,
-                            grade: mark.grade || { g: 'N/A', r: 'N/A' }
+                            grade: mark.grade?.g || 'N/A'
                         };
                         
                         const response = await fetch('/api/data', {

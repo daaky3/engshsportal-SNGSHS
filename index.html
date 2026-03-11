@@ -2766,7 +2766,7 @@
 
             async get(id) {
                 try {
-                    const response = await fetch(`${SUPABASE_API}?table=${tableName}&id=${id}`);
+                    const response = await fetch(`${SUPABASE_API}?table=${tableName}&id=${encodeURIComponent(id)}`);
                     if (!response.ok) {
                         const errMsg = await getErrorMessage(response);
                         throw new Error(errMsg);
@@ -3284,23 +3284,33 @@
             // Import marks
             if (marks.length > 0) {
                 const batchSize = 100;
+                // Build verification sets of successfully imported IDs
+                const successfulStudentIds = new Set(Object.values(idMapping.students).filter(id => id));
+                const successfulSubjectIds = new Set(Object.values(idMapping.subjects).filter(id => id));
+                
                 for (let i = 0; i < marks.length; i++) {
                     const mark = marks[i];
                     try {
-                        if (!mark.studentId || !mark.subjectId) continue;
+                        // Skip if missing required IDs or empty semester
+                        if (!mark.studentId || !mark.subjectId || !mark.semester) continue;
                         
                         const studentId = idMapping.students[mark.studentId] || numericToUUID(mark.studentId);
                         const subjectId = idMapping.subjects[mark.subjectId] || numericToUUID(mark.subjectId);
+                        
+                        // Validate that student and subject were successfully imported
+                        if (!successfulStudentIds.has(studentId) || !successfulSubjectIds.has(subjectId)) {
+                            continue;
+                        }
                         
                         const record = {
                             student_id: studentId,
                             subject_id: subjectId,
                             class_mark: mark.classScore || 0,
                             exam_mark: mark.examScore || 0,
-                            academic_year: mark.academicYear || '',
-                            semester: mark.semester || '',
+                            academic_year: (mark.academicYear || '').trim(),
+                            semester: String(mark.semester).trim(),
                             total: mark.total || 0,
-                            grade: mark.grade?.g || 'N/A'
+                            grade: (mark.grade?.g || 'N/A').substring(0, 2)
                         };
                         
                         const response = await fetch('/api/data', {

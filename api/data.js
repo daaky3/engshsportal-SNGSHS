@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, data });
     }
 
-    // POST - Create new record
+    // POST - Create new record (or update if exists - for import support)
     if (req.method === 'POST') {
       const record = req.body?.record;
       
@@ -68,19 +68,39 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Missing record in body' });
       }
       
-      console.log(`[DATA API] Inserting into ${table}:`, Object.keys(record));
+      console.log(`[DATA API] Inserting/Upserting into ${table}:`, Object.keys(record));
       
+      // Try upsert first (INSERT ... ON CONFLICT UPDATE)
+      // This allows re-importing data without errors
       const { data, error } = await supabase
         .from(table)
-        .insert([record])
+        .upsert([record], { onConflict: 'id' })
         .select();
       
       if (error) {
         console.error(`[DATA API] POST error for ${table}:`, error);
+        
+        // If onConflict 'id' doesn't work for all tables, fall back to regular insert
+        if (error.message && error.message.includes('onConflict')) {
+          console.log(`[DATA API] Falling back to regular insert for ${table}`);
+          const { data: insertData, error: insertError } = await supabase
+            .from(table)
+            .insert([record])
+            .select();
+          
+          if (insertError) {
+            console.error(`[DATA API] Regular insert also failed:`, insertError);
+            return res.status(500).json({ error: insertError.message, code: insertError.code, details: insertError.details });
+          }
+          
+          const returnedRecord = insertData && insertData.length > 0 ? insertData[0] : null;
+          return res.status(201).json({ success: true, data: returnedRecord });
+        }
+        
         return res.status(500).json({ error: error.message, code: error.code, details: error.details });
       }
       
-      // Return the created record
+      // Return the created or updated record
       const returnedRecord = data && data.length > 0 ? data[0] : null;
       
       return res.status(201).json({ success: true, data: returnedRecord });

@@ -3264,10 +3264,18 @@
                         const classId = st.classId || st.class_id;
                         const newClassId = classId ? (idMapping.classes[classId] || numericToUUID(classId)) : null;
                         
-                        // Convert subjectIds array
+                        // Validate that class exists if student has a class
+                        if (classId && !idMapping.classes[classId]) {
+                            console.warn(`Skipping student "${st.name}": class ID ${classId} not found in backup`);
+                            continue;
+                        }
+                        
+                        // Convert subjectIds array - only include subjects that exist in mapping
                         let subjectIds = [];
                         if (st.subjectIds && Array.isArray(st.subjectIds)) {
-                            subjectIds = st.subjectIds.map(oldId => idMapping.subjects[oldId] || numericToUUID(oldId)).filter(id => id);
+                            subjectIds = st.subjectIds
+                                .map(oldId => idMapping.subjects[oldId] || numericToUUID(oldId))
+                                .filter(id => id);
                         }
                         
                         const record = {

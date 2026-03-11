@@ -70,18 +70,32 @@ module.exports = async (req, res) => {
       
       console.log(`[DATA API] Inserting/Upserting into ${table}:`, Object.keys(record));
       
-      // Try upsert first (INSERT ... ON CONFLICT UPDATE)
+      // Different tables have different primary key structures
+      let upsertConfig = {};
+      
+      if (table === 'marks') {
+        // Marks table has composite key: (student_id, subject_id, academic_year, semester)
+        upsertConfig = { onConflict: 'student_id,subject_id,academic_year,semester' };
+      } else if (table === 'config') {
+        // Config table primary key is 'key' column
+        upsertConfig = { onConflict: 'key' };
+      } else {
+        // Most tables use 'id' as primary key
+        upsertConfig = { onConflict: 'id' };
+      }
+      
+      // Try upsert (INSERT ... ON CONFLICT UPDATE)
       // This allows re-importing data without errors
       const { data, error } = await supabase
         .from(table)
-        .upsert([record], { onConflict: 'id' })
+        .upsert([record], upsertConfig)
         .select();
       
       if (error) {
-        console.error(`[DATA API] POST error for ${table}:`, error);
+        console.error(`[DATA API] Upsert error for ${table}:`, error);
         
-        // If onConflict 'id' doesn't work for all tables, fall back to regular insert
-        if (error.message && error.message.includes('onConflict')) {
+        // If upsert doesn't work, fall back to regular insert
+        if (error.message && (error.message.includes('onConflict') || error.message.includes('does not exist'))) {
           console.log(`[DATA API] Falling back to regular insert for ${table}`);
           const { data: insertData, error: insertError } = await supabase
             .from(table)

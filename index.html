@@ -2752,16 +2752,10 @@
                 }
             },
 
-            async put(record) { // Same as add for upsert behavior
+            async put(record) { // Upsert: insert or update
                 try {
-                    // Handle both 'id' (for most tables) and 'key' (for config table)
-                    if (record.id) {
-                        const { id, ...updates } = record;
-                        return await this.update(id, updates);
-                    } else if (record.key) {
-                        const { key, ...updates } = record;
-                        return await this.update(key, updates);
-                    }
+                    // Always use add() which calls POST endpoint with upsert logic
+                    // The API handles both 'id' and 'key' primary keys automatically
                     return await this.add(record);
                 } catch (err) {
                     console.error(`❌ Error putting to ${tableName}:`, err);

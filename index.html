@@ -1653,6 +1653,7 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-primary" onclick="exportAllData()">📥 Export All Data</button>
                 <button class="btn btn-primary" style="background: #2563eb;" onclick="document.getElementById('dataImportFile').click()">📤 Import Data</button>
+                <button class="btn btn-primary" style="background: #dc2626;" onclick="clearAllDataPrompt()">🗑️ Delete All Data</button>
                 <input type="file" id="dataImportFile" accept=".json" style="display:none;" onchange="importAllData()">
             </div>
             
@@ -3093,6 +3094,104 @@
         }
     }
 
+    function clearAllDataPrompt() {
+        const warning = confirm('⚠️ WARNING: DELETE ALL DATA?\n\n🔴 This will PERMANENTLY delete:\n• All students\n• All classes\n• All subjects\n• All marks & grades\n• All reports\n• All settings\n\n✋ This CANNOT be undone!\n\nClick OK to confirm deletion, or Cancel to keep your data.');
+        if (warning) {
+            clearAllData();
+        }
+    }
+
+    async function clearAllData() {
+        try {
+            document.getElementById('backupStatus').style.display = 'block';
+            document.getElementById('backupStatus').innerHTML = '🗑️ <strong>Deleting all data...</strong><br><small>Please wait, this may take a minute...</small>';
+            
+            // Tables in dependency order (reverse of import order)
+            const tables = ['report_links', 'marks', 'students', 'classes', 'subjects', 'config', 'promotion_history'];
+            
+            // Helper: Retry with exponential backoff
+            async function retryWithBackoff(fn, maxRetries = 3) {
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        return await fn();
+                    } catch (e) {
+                        if (i === maxRetries - 1) throw e;
+                        const delay = Math.pow(2, i) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+
+            // Helper: Throttle requests
+            async function delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            let totalDeleted = 0;
+            
+            for (const table of tables) {
+                try {
+                    // Fetch all records from this table
+                    const response = await fetch(`/api/data?table=${table}`);
+                    if (!response.ok) continue;
+                    
+                    const result = await response.json();
+                    const records = result.data || [];
+                    
+                    console.log(`🗑️ Deleting ${records.length} records from ${table}...`);
+                    
+                    let deletedCount = 0;
+                    let deleteCount = 0;
+                    
+                    for (const record of records) {
+                        try {
+                            const id = record.id || record.key;
+                            if (!id) continue;
+                            
+                            await retryWithBackoff(async () => {
+                                const deleteResponse = await fetch('/api/data', {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ table, id })
+                                });
+                                if (!deleteResponse.ok) throw new Error('Delete failed');
+                            }, 2);
+                            
+                            deletedCount++;
+                            totalDeleted++;
+                        } catch (e) {
+                            console.warn(`Failed to delete ${table} record:`, e.message);
+                        }
+                        
+                        // Throttle: add delay every 10 deletions
+                        deleteCount++;
+                        if (deleteCount % 10 === 0) {
+                            await delay(500);
+                        }
+                    }
+                    
+                    console.log(`✅ Deleted ${deletedCount} records from ${table}`);
+                } catch (e) {
+                    console.warn(`Error clearing ${table}:`, e.message);
+                }
+            }
+            
+            document.getElementById('backupStatus').innerHTML = `
+                ✅ <strong>All Data Deleted!</strong><br>
+                🗑️ ${totalDeleted} records permanently removed<br>
+                <small style="color: #666;">Database is now empty. You can import new data anytime.</small>
+            `;
+            
+            // Refresh data status
+            setTimeout(() => updateDataStatus(), 1000);
+            
+            console.log(`✅ All data cleared: ${totalDeleted} records deleted`);
+        } catch (err) {
+            console.error('Clear data error:', err);
+            document.getElementById('backupStatus').innerHTML = `❌ <strong>Error:</strong> ${err.message}`;
+        }
+    }
+
     async function importAllData() {
         try {
             const file = document.getElementById('dataImportFile').files[0];
@@ -3124,23 +3223,64 @@
             // Ask user if they want to replace existing data
             const shouldClear = confirm('⚠️ IMPORTANT:\n\n🟢 OK = Import & Merge (keeps existing data, adds new data)\n🔴 CANCEL = Clear First, Then Import (DELETES all current data)\n\nChoose carefully! '  );
             
+            // Helper: Retry with exponential backoff
+            async function retryWithBackoff(fn, maxRetries = 3) {
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        return await fn();
+                    } catch (e) {
+                        if (i === maxRetries - 1) throw e;
+                        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+                        console.log(`Retry after ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+
+            // Helper: Throttle requests
+            async function delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
             if (!shouldClear) {
                 // User wants to clear first - show confirmation
                 const confirmed = confirm('⚠️ Are you absolutely sure?\n\nThis will DELETE ALL data (students, marks, reports, etc.) and replace with backup.\n\n✋ This cannot be undone!');
                 if (confirmed) {
-                    document.getElementById('backupStatus').innerHTML = '🗑️ Clearing all existing data...';
-                    // Clear each table by fetching all and deleting
+                    document.getElementById('backupStatus').innerHTML = '🗑️ Clearing all existing data...<br><small>This may take a minute...</small>';
+                    // Clear each table by fetching all and deleting with delays
                     try {
-                        const tables = ['subjects', 'classes', 'students', 'marks', 'promotion_history', 'report_links'];
+                        const tables = ['promotion_history', 'report_links', 'marks', 'students', 'classes', 'subjects'];
+                        let totalDeleted = 0;
+                        
                         for (const tbl of tables) {
-                            const records = await db[tbl].toArray();
-                            for (const rec of records) {
-                                await db[tbl].delete(rec.id);
+                            try {
+                                console.log(`Clearing ${tbl}...`);
+                                const records = await db[tbl].toArray();
+                                
+                                for (let i = 0; i < records.length; i++) {
+                                    const rec = records[i];
+                                    try {
+                                        await retryWithBackoff(() => db[tbl].delete(rec.id), 2);
+                                        totalDeleted++;
+                                    } catch (e) {
+                                        console.warn(`Failed to delete record from ${tbl}:`, rec.id, e);
+                                        // Continue with next record
+                                    }
+                                    
+                                    // Add small delay every 10 deletions to prevent overwhelming server
+                                    if ((i + 1) % 10 === 0) {
+                                        await new Promise(resolve => setTimeout(resolve, 500));
+                                    }
+                                }
+                                console.log(`✅ Cleared ${tbl}: ${records.length} records`);
+                            } catch (e) {
+                                console.warn(`Error clearing table ${tbl}:`, e.message);
+                                // Continue with next table
                             }
                         }
-                        document.getElementById('backupStatus').innerHTML = '✅ Cleared! Now importing new data...';
+                        document.getElementById('backupStatus').innerHTML = `✅ Cleared ${totalDeleted} records! Now importing new data...`;
                     } catch (e) {
-                        console.warn('Some data may not have been cleared:', e.message);
+                        console.warn('Data clear completed with some warnings:', e.message);
                         // Continue anyway
                     }
                 } else {
@@ -3170,6 +3310,7 @@
             
             // Convert and import subjects
             if (subjects.length > 0) {
+                let requestCount = 0;
                 for (const s of subjects) {
                     try {
                         if (!s.id) continue;
@@ -3194,6 +3335,12 @@
                             console.warn('Subject import warning:', errData);
                             stats.subjects++;
                         }
+                        
+                        // Throttle: add delay every 5 requests (smaller batch)
+                        requestCount++;
+                        if (requestCount % 5 === 0) {
+                            await delay(100);
+                        }
                     } catch (e) {
                         console.error('Subject import error:', s, e);
                         stats.errors.push(`Subject "${s.name}": ${e.message}`);
@@ -3204,6 +3351,7 @@
             
             // Convert and import classes
             if (classes.length > 0) {
+                let requestCount = 0;
                 for (const c of classes) {
                     try {
                         if (!c.id) continue;
@@ -3237,6 +3385,12 @@
                             console.warn('Class import warning:', errData);
                             stats.classes++;
                         }
+                        
+                        // Throttle: add delay every 5 requests (smaller batch)
+                        requestCount++;
+                        if (requestCount % 5 === 0) {
+                            await delay(100);
+                        }
                     } catch (e) {
                         console.error('Class import error:', c, e);
                         stats.errors.push(`Class "${c.name}": ${e.message}`);
@@ -3253,6 +3407,7 @@
             if (students.length > 0) {
                 // Process students in batches to avoid overwhelming the server
                 const batchSize = 50;
+                let requestCount = 0;
                 for (let i = 0; i < students.length; i++) {
                     const st = students[i];
                     try {
@@ -3300,6 +3455,12 @@
                             stats.students++;
                         }
                         
+                        // Throttle: add delay every 10 requests
+                        requestCount++;
+                        if (requestCount % 10 === 0) {
+                            await delay(200);
+                        }
+                        
                         // Update UI progress every 50 students
                         if ((i + 1) % batchSize === 0) {
                             document.getElementById('backupStatus').innerHTML = `⏳ Step 3/4: Converting students (${i + 1}/${students.length})...`;
@@ -3320,6 +3481,7 @@
             // Import marks
             if (marks.length > 0) {
                 const batchSize = 100;
+                let requestCount = 0;
                 // Build verification sets of successfully imported IDs
                 const successfulStudentIds = new Set(Object.values(idMapping.students).filter(id => id));
                 const successfulSubjectIds = new Set(Object.values(idMapping.subjects).filter(id => id));
@@ -3365,6 +3527,12 @@
                             stats.marks++;
                         }
                         
+                        // Throttle: add delay every 10 requests
+                        requestCount++;
+                        if (requestCount % 10 === 0) {
+                            await delay(200);
+                        }
+                        
                         // Update UI progress every 100 marks
                         if ((i + 1) % batchSize === 0) {
                             document.getElementById('backupStatus').innerHTML = `⏳ Step 4/4: Converting marks (${i + 1}/${marks.length})...`;
@@ -3378,6 +3546,7 @@
             
             // Import config
             if (config.length > 0) {
+                let requestCount = 0;
                 for (const conf of config) {
                     try {
                         if (!conf.key) continue;
@@ -3401,6 +3570,12 @@
                                 console.warn('Config import warning:', errData);
                             }
                             stats.config++;
+                        }
+                        
+                        // Throttle: add delay every 3 requests (small batch)
+                        requestCount++;
+                        if (requestCount % 3 === 0) {
+                            await delay(100);
                         }
                     } catch (e) {
                         console.error('Config import error:', conf, e);

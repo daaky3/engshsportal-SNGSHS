@@ -1270,50 +1270,14 @@
       }
     };
 
-    // Session is managed by Supabase Auth (no offline restoration needed)
+    // Session is managed by Supabase Auth
     function restoreSession() {
       // Session state is maintained server-side in Supabase
     }
 
     restoreSession();
     console.log('✅ Supabase Authentication Ready');
-    
-    // ===== SUPABASE DATA SYNC =====
-    // Helper function to save data to Supabase
-    window.syncDataToSupabase = async function(action, data) {
-      try {
-        if (!window.currentUser) {
-          console.warn('⚠️ Not logged in - skipping Supabase sync');
-          return false;
-        }
 
-        console.log(`📤 Syncing to Supabase: ${action}, Items:`, Array.isArray(data) ? data.length : 1);
-
-        const response = await fetch('/api/savedata', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action,
-            data,
-            userId: window.currentUser.uid
-          })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          console.log(`✅ Synced to Supabase: ${result.message}`);
-          return true;
-        } else {
-          console.error(`❌ Supabase sync error: ${result.error}`);
-          return false;
-        }
-      } catch (err) {
-        console.error('❌ Supabase sync error:', err.message);
-        return false;
-      }
-    };
-    updateLoadingStatus('Data sync ready');
 </script>
 
 <div id="reportPortalContainer" style="display: none; width: 100%; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; overflow-x: hidden; overflow-y: auto; box-sizing: border-box;">
@@ -1908,7 +1872,7 @@
         </div>
         <div class="card">
             <table class="main-table"><thead><tr><th>Student Name</th><th>Class (30)</th><th>Exam (70)</th><th>Total</th><th>Grade</th></tr></thead><tbody id="resultsGridBody"></tbody></table>
-            <button class="btn btn-primary" style="margin-top:20px;" onclick="saveAllMarks()">Save Marks Offline</button>
+            <button class="btn btn-primary" style="margin-top:20px;" onclick="saveAllMarks()">Save Marks</button>
         </div>
         
         <div class="card">
@@ -3013,7 +2977,7 @@
             document.getElementById('dataStatus').innerHTML = `
                 <p><strong>❌ Error:</strong> Cannot access database</p>
                 <p style="color:#ef4444; font-size:12px;">Error: ${e.message}</p>
-                <p style="font-size:12px; color:#666; margin-top:10px;">Try refreshing the page or clearing your browser cache.</p>
+                <p style="font-size:12px; color:#666; margin-top:10px;">Try refreshing the page.</p>
             `;
         }
     }
@@ -4283,7 +4247,6 @@
             const currentYear = config.year || "";
             const currentSemester = config.semester || "";
             
-            const marksToSync = [];
             let savedCount = 0;
             
             for(let row of document.querySelectorAll('#resultsGridBody tr')) {
@@ -4301,16 +4264,10 @@
                 };
                 
                 await db.marks.put(markRecord);
-                marksToSync.push(markRecord);
                 savedCount++;
             }
             
-            // Sync to Supabase in bulk
-            if (marksToSync.length > 0) {
-                await window.syncDataToSupabase('save_results', marksToSync);
-            }
-            
-            alert(`✓ Saved ${savedCount} student marks offline and synced to cloud!`);
+            alert(`✓ Saved ${savedCount} student marks to Supabase!`);
         } catch(err) {
             console.error('❌ Error saving marks:', err);
             alert("Error saving marks: " + err.message);
@@ -6457,7 +6414,7 @@ Parents can view the complete terminal report by opening the link above.`;
                         // Continue anyway - fallback to local storage
                     }
                     
-                    // Also store in local IndexedDB for fallback
+                    // Store report link in Supabase
                     await storeReportLink(student.id, reportCode, year, semester);
 
                     // Get student's marks and create SMS summary
@@ -6675,13 +6632,13 @@ Parents can view the complete terminal report by opening the link above.`;
                 const reportLink = links[0];
                 const { studentId, academicYear, semester } = reportLink;
 
-                // Build report data from local database
+                // Build report data from Supabase
                 reportData = await gatherReportData(studentId, academicYear, semester);
                 if(!reportData) {
                     showReportError('Failed to load report data.');
                     return;
                 }
-                console.log('[Report] Using IndexedDB report data');
+                console.log('[Report] Using Supabase report data');
             }
 
             // Verify we have report data
@@ -8931,11 +8888,8 @@ Parents can view the complete terminal report by opening the link above.`;
                 updateSMSFilterUI('class');
                 loadManageStudentsFilters();
                 
-                // Try to load synced data
-                const dataLoaded = await importDataFromServer(result.uid);
-                if(!dataLoaded) {
-                    console.log('💾 No synced data yet. Local data will be used.');
-                }
+                // All data is loaded directly from Supabase via the database adapter
+                console.log('✅ Data adapter connected to Supabase');
                 
                 // Clear form
                 document.getElementById('loginForm').reset();

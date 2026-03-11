@@ -2969,13 +2969,20 @@
     async function saveSettings() {
         const oldInfo = (await db.config.get('school_info'))?.value;
         const newData = {
-            year: document.getElementById('setYear').value,
-            semester: document.getElementById('setSemester').value,
-            track: document.getElementById('setTrack').value,
-            attendance: document.getElementById('setAttendance').value,
-            vacationDate: document.getElementById('setVacationDate').value,
-            nextSemesterDate: document.getElementById('setNextSemesterDate').value
+            year: document.getElementById('setYear').value || '',
+            semester: document.getElementById('setSemester').value || '1',
+            track: document.getElementById('setTrack').value || '',
+            attendance: document.getElementById('setAttendance').value || '',
+            vacationDate: document.getElementById('setVacationDate').value || '',
+            nextSemesterDate: document.getElementById('setNextSemesterDate').value || ''
         };
+        
+        // Clean up "undefined" strings that might be in the form
+        Object.keys(newData).forEach(key => {
+            if (newData[key] === 'undefined' || newData[key] === undefined) {
+                newData[key] = '';
+            }
+        });
         
         console.log('📝 Saving settings:', newData);
         
@@ -2995,10 +3002,10 @@
         
         const info = await db.config.get('school_info');
         if(info) {
-            document.getElementById('setYear').value = info.value.year;
-            document.getElementById('setSemester').value = info.value.semester;
-            document.getElementById('setTrack').value = info.value.track;
-            document.getElementById('setAttendance').value = info.value.attendance;
+            document.getElementById('setYear').value = info.value.year || '';
+            document.getElementById('setSemester').value = info.value.semester || '1';
+            document.getElementById('setTrack').value = info.value.track || '';
+            document.getElementById('setAttendance').value = info.value.attendance || '';
             document.getElementById('setVacationDate').value = info.value.vacationDate || '';
             document.getElementById('setNextSemesterDate').value = info.value.nextSemesterDate || '';
         }

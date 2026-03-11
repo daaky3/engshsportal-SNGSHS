@@ -2754,9 +2754,13 @@
 
             async put(record) { // Same as add for upsert behavior
                 try {
+                    // Handle both 'id' (for most tables) and 'key' (for config table)
                     if (record.id) {
                         const { id, ...updates } = record;
                         return await this.update(id, updates);
+                    } else if (record.key) {
+                        const { key, ...updates } = record;
+                        return await this.update(key, updates);
                     }
                     return await this.add(record);
                 } catch (err) {

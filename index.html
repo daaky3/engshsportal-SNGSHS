@@ -3121,6 +3121,34 @@
                 promotion_history: backup.tables.promotion_history?.length || 0
             });
             
+            // Ask user if they want to replace existing data
+            const shouldClear = confirm('⚠️ IMPORTANT:\n\n🟢 OK = Import & Merge (keeps existing data, adds new data)\n🔴 CANCEL = Clear First, Then Import (DELETES all current data)\n\nChoose carefully! '  );
+            
+            if (!shouldClear) {
+                // User wants to clear first - show confirmation
+                const confirmed = confirm('⚠️ Are you absolutely sure?\n\nThis will DELETE ALL data (students, marks, reports, etc.) and replace with backup.\n\n✋ This cannot be undone!');
+                if (confirmed) {
+                    document.getElementById('backupStatus').innerHTML = '🗑️ Clearing all existing data...';
+                    // Clear each table by fetching all and deleting
+                    try {
+                        const tables = ['subjects', 'classes', 'students', 'marks', 'promotion_history', 'report_links'];
+                        for (const tbl of tables) {
+                            const records = await db[tbl].toArray();
+                            for (const rec of records) {
+                                await db[tbl].delete(rec.id);
+                            }
+                        }
+                        document.getElementById('backupStatus').innerHTML = '✅ Cleared! Now importing new data...';
+                    } catch (e) {
+                        console.warn('Some data may not have been cleared:', e.message);
+                        // Continue anyway
+                    }
+                } else {
+                    document.getElementById('backupStatus').innerHTML = '❌ Import cancelled by user';
+                    return;
+                }
+            }
+            
             // Destructure backup data
             const { subjects = [], classes = [], students = [], marks = [], config = [], promotion_history = [] } = backup.tables;
             
@@ -3416,7 +3444,8 @@
                 <strong style="color: #10b981;">✓ ${stats.subjects} subjects | ✓ ${stats.classes} classes | ✓ ${stats.students} students</strong><br>
                 <strong style="color: #10b981;">✓ ${stats.marks} marks | ✓ ${stats.config} config | ✓ ${stats.promotion} promotions</strong><br>
                 📅 Backup from: ${new Date(backup.exportDate).toLocaleDateString()}<br>
-                ✨ All IDs migrated to Supabase (UUID format)
+                ✨ All IDs migrated to Supabase (UUID format)<br>
+                💾 Duplicate records were automatically merged/updated
                 ${errorSummary}<br>
                 <strong style="color: #0ea5e9;">Page refreshing in 3 seconds...</strong>
             `;

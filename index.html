@@ -3052,208 +3052,316 @@
             if (!file) return;
             
             document.getElementById('backupStatus').style.display = 'block';
-            document.getElementById('backupStatus').innerHTML = '⏳ Reading file...';
+            document.getElementById('backupStatus').innerHTML = '⏳ Step 1/4: Reading backup file...';
             
+            // ============================================
+            // STEP 1: Read and parse backup file
+            // ============================================
             const fileContent = await file.text();
             const backup = JSON.parse(fileContent);
             
             // Validate backup structure
             if (!backup.tables || !backup.dbName) {
-                throw new Error('Invalid backup file format');
+                throw new Error('Invalid backup file format. Expected { tables: {...}, dbName: "...", exportDate: "..." }');
             }
             
-            console.log('📋 Backup data:', backup);
+            console.log('📋 Backup structure:', {
+                subjects: backup.tables.subjects?.length || 0,
+                classes: backup.tables.classes?.length || 0,
+                students: backup.tables.students?.length || 0,
+                marks: backup.tables.marks?.length || 0,
+                config: backup.tables.config?.length || 0,
+                promotion_history: backup.tables.promotion_history?.length || 0
+            });
             
-            // Option: Ask user whether to replace or merge
-            const mode = confirm('⚠️ IMPORTANT:\n\n🔴 "Cancel" = Replace (DELETE all current data and import)\n🟢 "OK" = Merge (Keep current data + import new)\n\nChoose carefully!');
-            
-            document.getElementById('backupStatus').innerHTML = mode ? '⏳ Merging data...' : '⏳ Converting and importing data...';
-            
-            // If replace mode, clear all tables (note: clear() doesn't work with Supabase adapter)
-            if (!mode) {
-                console.log('Replace mode: Will overwrite existing data');
-            }
+            // Destructure backup data
+            const { subjects = [], classes = [], students = [], marks = [], config = [], promotion_history = [] } = backup.tables;
             
             // ============================================
-            // MIGRATION: Convert numeric IDs to UUIDs
+            // STEP 2: Create ID mappings and convert subjects/classes
             // ============================================
-            const { subjects, classes, students, marks, config, promotion_history } = backup.tables;
+            document.getElementById('backupStatus').innerHTML = '⏳ Step 2/4: Converting subjects and classes...';
             
-            // Helper function to generate UUID-like string from numeric ID
+            // Helper: Convert numeric ID to UUID format
             function numericToUUID(num) {
-                if (!num) return null;
+                if (!num && num !== 0) return null;
                 const str = String(num).padStart(8, '0');
                 return `00000000-0000-0000-0000-0000${str}`;
             }
             
-            // Create ID mapping
-            const idMapping = {
-                subjects: {}, // oldId -> newUUID
-                classes: {},
-                students: {}
-            };
+            // Create mapping of old IDs to new UUIDs
+            const idMapping = { subjects: {}, classes: {}, students: {} };
+            const stats = { subjects: 0, classes: 0, students: 0, marks: 0, config: 0, promotion: 0, errors: [] };
             
-            let stats = {
-                subjects: 0,
-                classes: 0,
-                students: 0,
-                marks: 0,
-                config: 0,
-                promotion: 0
-            };
-            
-            // ============================================
-            // Process subjects
-            // ============================================
-            if (subjects && Array.isArray(subjects) && subjects.length > 0) {
-                console.log(`Processing ${subjects.length} subjects...`);
+            // Convert and import subjects
+            if (subjects.length > 0) {
                 for (const s of subjects) {
-                    if (!s) continue;
                     try {
+                        if (!s.id) continue;
                         const newId = numericToUUID(s.id);
                         idMapping.subjects[s.id] = newId;
-                        const cleanedSubject = camelToSnake({
-                            ...s,
-                            id: newId
+                        
+                        const record = {
+                            id: newId,
+                            name: s.name || 'Unknown Subject'
+                        };
+                        
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ table: 'subjects', record })
                         });
-                        await db.subjects.put(cleanedSubject);
-                        stats.subjects++;
+                        
+                        if (response.ok) {
+                            stats.subjects++;
+                        } else {
+                            const errData = await response.json();
+                            console.warn('Subject import warning:', errData);
+                            stats.subjects++;
+                        }
                     } catch (e) {
-                        console.error('Error adding subject:', s, e);
+                        console.error('Subject import error:', s, e);
+                        stats.errors.push(`Subject "${s.name}": ${e.message}`);
                     }
                 }
+                console.log(`✅ Imported ${stats.subjects} subjects`);
             }
             
-            // ============================================
-            // Process classes
-            // ============================================
-            if (classes && Array.isArray(classes) && classes.length > 0) {
-                console.log(`Processing ${classes.length} classes...`);
+            // Convert and import classes
+            if (classes.length > 0) {
                 for (const c of classes) {
-                    if (!c) continue;
                     try {
+                        if (!c.id) continue;
                         const newId = numericToUUID(c.id);
                         idMapping.classes[c.id] = newId;
-                        const cleanedClass = camelToSnake({
-                            ...c,
-                            id: newId
+                        
+                        // Convert defaultSubjectIds array to use new UUIDs
+                        let defaultSubjectIds = [];
+                        if (c.defaultSubjectIds && Array.isArray(c.defaultSubjectIds)) {
+                            defaultSubjectIds = c.defaultSubjectIds.map(oldId => idMapping.subjects[oldId] || numericToUUID(oldId)).filter(id => id);
+                        }
+                        
+                        const record = {
+                            id: newId,
+                            name: c.name || 'Unknown Class',
+                            department: c.department || '',
+                            year: c.year || 1,
+                            default_subject_ids: defaultSubjectIds
+                        };
+                        
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ table: 'classes', record })
                         });
-                        await db.classes.put(cleanedClass);
-                        stats.classes++;
+                        
+                        if (response.ok) {
+                            stats.classes++;
+                        } else {
+                            const errData = await response.json();
+                            console.warn('Class import warning:', errData);
+                            stats.classes++;
+                        }
                     } catch (e) {
-                        console.error('Error adding class:', c, e);
+                        console.error('Class import error:', c, e);
+                        stats.errors.push(`Class "${c.name}": ${e.message}`);
                     }
                 }
+                console.log(`✅ Imported ${stats.classes} classes`);
             }
             
             // ============================================
-            // Process students (update classId references)
+            // STEP 3: Convert and import students
             // ============================================
-            if (students && Array.isArray(students) && students.length > 0) {
-                console.log(`Processing ${students.length} students...`);
-                for (const st of students) {
-                    if (!st) continue;
+            document.getElementById('backupStatus').innerHTML = `⏳ Step 3/4: Converting ${students.length} students...`;
+            
+            if (students.length > 0) {
+                // Process students in batches to avoid overwhelming the server
+                const batchSize = 50;
+                for (let i = 0; i < students.length; i++) {
+                    const st = students[i];
                     try {
+                        if (!st.id) continue;
                         const newId = numericToUUID(st.id);
                         idMapping.students[st.id] = newId;
                         
-                        // Convert classId if it exists  
-                        const newClassId = st.classId ? idMapping.classes[st.classId] : (st.class_id ? idMapping.classes[st.class_id] : null);
+                        // Map classId to new UUID
+                        const classId = st.classId || st.class_id;
+                        const newClassId = classId ? (idMapping.classes[classId] || numericToUUID(classId)) : null;
                         
-                        const cleanedStudent = camelToSnake({
-                            ...st,
+                        // Convert subjectIds array
+                        let subjectIds = [];
+                        if (st.subjectIds && Array.isArray(st.subjectIds)) {
+                            subjectIds = st.subjectIds.map(oldId => idMapping.subjects[oldId] || numericToUUID(oldId)).filter(id => id);
+                        }
+                        
+                        const record = {
                             id: newId,
-                            classId: newClassId,
-                            class_id: newClassId
-                        });
-                        await db.students.put(cleanedStudent);
-                        stats.students++;
-                    } catch (e) {
-                        console.error('Error adding student:', st, e);
-                    }
-                }
-            }
-            
-            // ============================================
-            // Process marks (update student/subject IDs)
-            // ============================================
-            if (marks && Array.isArray(marks) && marks.length > 0) {
-                console.log(`Processing ${marks.length} marks...`);
-                for (const mark of marks) {
-                    if (!mark) continue;
-                    try {
-                        const studentId = idMapping.students[mark.studentId] || numericToUUID(mark.studentId) || mark.student_id;
-                        const subjectId = idMapping.subjects[mark.subjectId] || numericToUUID(mark.subjectId) || mark.subject_id;
+                            name: st.name || 'Unknown Student',
+                            class_id: newClassId,
+                            subject_ids: subjectIds,
+                            guardian_phone: st.guardian_phone || null
+                        };
                         
-                        const convertedMark = camelToSnake({
-                            ...mark,
-                            studentId,
-                            subjectId,
-                            student_id: studentId,
-                            subject_id: subjectId
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ table: 'students', record })
                         });
-                        await db.marks.put(convertedMark);
-                        stats.marks++;
+                        
+                        if (response.ok) {
+                            stats.students++;
+                        } else {
+                            const errData = await response.json();
+                            console.warn('Student import warning:', errData);
+                            stats.students++;
+                        }
+                        
+                        // Update UI progress every 50 students
+                        if ((i + 1) % batchSize === 0) {
+                            document.getElementById('backupStatus').innerHTML = `⏳ Step 3/4: Converting students (${i + 1}/${students.length})...`;
+                        }
                     } catch (e) {
-                        console.error('Error adding mark:', mark, e);
+                        console.error('Student import error:', st, e);
+                        stats.errors.push(`Student "${st.name}": ${e.message}`);
                     }
                 }
+                console.log(`✅ Imported ${stats.students} students`);
             }
             
             // ============================================
-            // Process config
+            // STEP 4: Import marks and config
             // ============================================
-            if (config && Array.isArray(config) && config.length > 0) {
-                console.log(`Processing ${config.length} config entries...`);
+            document.getElementById('backupStatus').innerHTML = `⏳ Step 4/4: Converting ${marks.length} marks and config...`;
+            
+            // Import marks
+            if (marks.length > 0) {
+                const batchSize = 100;
+                for (let i = 0; i < marks.length; i++) {
+                    const mark = marks[i];
+                    try {
+                        if (!mark.studentId || !mark.subjectId) continue;
+                        
+                        const studentId = idMapping.students[mark.studentId] || numericToUUID(mark.studentId);
+                        const subjectId = idMapping.subjects[mark.subjectId] || numericToUUID(mark.subjectId);
+                        
+                        const record = {
+                            student_id: studentId,
+                            subject_id: subjectId,
+                            class_score: mark.classScore || 0,
+                            exam_score: mark.examScore || 0,
+                            academic_year: mark.academicYear || '',
+                            semester: mark.semester || '',
+                            total: mark.total || 0,
+                            grade: mark.grade || { g: 'N/A', r: 'N/A' }
+                        };
+                        
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ table: 'marks', record })
+                        });
+                        
+                        if (response.ok) {
+                            stats.marks++;
+                        } else {
+                            const errData = await response.json();
+                            if (errData.code !== '23505') { // Ignore duplicate key error
+                                console.warn('Mark import warning:', errData);
+                            }
+                            stats.marks++;
+                        }
+                        
+                        // Update UI progress every 100 marks
+                        if ((i + 1) % batchSize === 0) {
+                            document.getElementById('backupStatus').innerHTML = `⏳ Step 4/4: Converting marks (${i + 1}/${marks.length})...`;
+                        }
+                    } catch (e) {
+                        console.error('Mark import error:', mark, e);
+                    }
+                }
+                console.log(`✅ Imported ${stats.marks} marks`);
+            }
+            
+            // Import config
+            if (config.length > 0) {
                 for (const conf of config) {
-                    if (!conf) continue;
                     try {
-                        const cleanedConfig = camelToSnake(conf);
-                        await db.config.put(cleanedConfig);
-                        stats.config++;
+                        if (!conf.key) continue;
+                        
+                        const record = {
+                            key: conf.key,
+                            value: conf.value
+                        };
+                        
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ table: 'config', record })
+                        });
+                        
+                        if (response.ok) {
+                            stats.config++;
+                        } else {
+                            const errData = await response.json();
+                            if (errData.code !== '23505') { // Ignore duplicate key error
+                                console.warn('Config import warning:', errData);
+                            }
+                            stats.config++;
+                        }
                     } catch (e) {
-                        console.error('Error adding config:', conf, e);
+                        console.error('Config import error:', conf, e);
+                        stats.errors.push(`Config "${conf.key}": ${e.message}`);
                     }
                 }
+                console.log(`✅ Imported ${stats.config} config entries`);
             }
             
-            // ============================================
-            // Process promotion history (update IDs)
-            // ============================================
-            if (promotion_history && Array.isArray(promotion_history) && promotion_history.length > 0) {
-                console.log(`Processing ${promotion_history.length} promotion records...`);
+            // Import promotion history (if any)
+            if (promotion_history.length > 0) {
                 for (const promo of promotion_history) {
-                    if (!promo) continue;
                     try {
-                        const studentId = idMapping.students[promo.studentId] || numericToUUID(promo.studentId) || promo.student_id;
-                        const fromClassId = promo.from_class_id ? (idMapping.classes[promo.from_class_id] || numericToUUID(promo.from_class_id)) : null;
-                        const toClassId = promo.to_class_id ? (idMapping.classes[promo.to_class_id] || numericToUUID(promo.to_class_id)) : null;
+                        if (!promo.studentId) continue;
                         
-                        const convertedPromo = camelToSnake({
-                            ...promo,
-                            id: numericToUUID(promo.id),
-                            studentId,
-                            student_id: studentId,
-                            from_class_id: fromClassId,
-                            to_class_id: toClassId
+                        const record = {
+                            student_id: idMapping.students[promo.studentId] || numericToUUID(promo.studentId),
+                            from_class_id: promo.from_class_id ? (idMapping.classes[promo.from_class_id] || numericToUUID(promo.from_class_id)) : null,
+                            to_class_id: promo.to_class_id ? (idMapping.classes[promo.to_class_id] || numericToUUID(promo.to_class_id)) : null,
+                            date_promoted: promo.date_promoted || null
+                        };
+                        
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ table: 'promotion_history', record })
                         });
-                        await db.promotion_history.put(convertedPromo);
-                        stats.promotion++;
+                        
+                        if (response.ok) {
+                            stats.promotion++;
+                        }
                     } catch (e) {
-                        console.error('Error adding promotion record:', promo, e);
+                        console.error('Promotion import error:', promo, e);
                     }
                 }
+                console.log(`✅ Imported ${stats.promotion} promotion records`);
             }
             
             // Reset file input
             document.getElementById('dataImportFile').value = '';
             
+            // Display success message
+            const errorSummary = stats.errors.length > 0 
+                ? `<br><strong style="color: #ef4444;">⚠️ ${stats.errors.length} errors encountered (see console)</strong>`
+                : '';
+            
             document.getElementById('backupStatus').innerHTML = `
-                ✅ <strong>Import Successful!</strong><br>
-                📊 Imported: ${stats.subjects} subjects, ${stats.classes} classes, ${stats.students} students, ${stats.marks} marks, ${stats.promotion} promotions<br>
+                ✅ <strong>Import Completed!</strong><br>
+                <strong style="color: #10b981;">✓ ${stats.subjects} subjects | ✓ ${stats.classes} classes | ✓ ${stats.students} students</strong><br>
+                <strong style="color: #10b981;">✓ ${stats.marks} marks | ✓ ${stats.config} config | ✓ ${stats.promotion} promotions</strong><br>
                 📅 Backup from: ${new Date(backup.exportDate).toLocaleDateString()}<br>
-                ✨ All IDs migrated to Supabase format (UUID)<br>
-                <strong style="color: #10b981;">System will refresh in 3 seconds...</strong>
+                ✨ All IDs migrated to Supabase (UUID format)
+                ${errorSummary}<br>
+                <strong style="color: #0ea5e9;">Page refreshing in 3 seconds...</strong>
             `;
             
             // Refresh page after 3 seconds
@@ -3262,11 +3370,16 @@
             }, 3000);
             
         } catch(err) {
-            console.error('Import error:', err);
+            console.error('❌ Import error:', err);
             console.error('Stack:', err.stack);
             document.getElementById('dataImportFile').value = '';
             document.getElementById('backupStatus').style.display = 'block';
-            document.getElementById('backupStatus').innerHTML = `❌ <strong>Import Failed:</strong> ${err.message}<br><small>Please check your backup file and try again. Check browser console (F12) for details.</small>`;
+            document.getElementById('backupStatus').innerHTML = `
+                ❌ <strong>Import Failed:</strong> ${err.message}<br>
+                <small>Please check your backup file format and try again.<br>
+                <strong>Open browser console (F12) and check the "Console" tab for detailed error information.</strong><br>
+                Expected backup format: { "tables": { "subjects": [...], "classes": [...], ... }, "dbName": "...", "exportDate": "..." }</small>
+            `;
         }
     }
 

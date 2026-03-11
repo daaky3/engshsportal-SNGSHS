@@ -22,7 +22,7 @@
       window.currentToken = null;
     </script>
     <!-- Third-party Libraries -->
-    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1147,7 +1147,7 @@
         // Check if key libraries are loaded
         window.checkLibraries = function() {
             const status = {
-                dexie: typeof Dexie !== 'undefined',
+                supabase: true,
                 xlsx: typeof XLSX !== 'undefined',
                 chartjs: typeof Chart !== 'undefined',
                 html2pdf: typeof html2pdf !== 'undefined',
@@ -1215,8 +1215,6 @@
 
           window.currentUser = data.user;
           window.currentToken = data.token;
-          localStorage.setItem('authToken', data.token);
-          localStorage.setItem('currentUser', JSON.stringify(data.user));
           
           console.log('✅ Sign up successful:', email);
           return { success: true, user: data.user, uid: data.user.uid };
@@ -1240,8 +1238,6 @@
 
           window.currentUser = data.user;
           window.currentToken = data.token;
-          localStorage.setItem('authToken', data.token);
-          localStorage.setItem('currentUser', JSON.stringify(data.user));
           
           console.log('✅ Login successful:', email);
           return { success: true, user: data.user, uid: data.user.uid };
@@ -1255,8 +1251,7 @@
         try {
           window.currentUser = null;
           window.currentToken = null;
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('currentUser');
+
           
           console.log('✅ Logout successful');
           return { success: true };
@@ -1275,15 +1270,9 @@
       }
     };
 
-    // Restore session from localStorage on page load
+    // Session is managed by Supabase Auth (no offline restoration needed)
     function restoreSession() {
-      const token = localStorage.getItem('authToken');
-      const user = localStorage.getItem('currentUser');
-      if (token && user) {
-        window.currentToken = token;
-        window.currentUser = JSON.parse(user);
-        console.log('✅ Session restored for:', window.currentUser.email);
-      }
+      // Session state is maintained server-side in Supabase
     }
 
     restoreSession();
@@ -2916,7 +2905,7 @@
     // Initialize page on load
     async function initializePage() {
         try {
-            const lastSection = localStorage.getItem('activeSection') || 'dashboard';
+            const lastSection = 'dashboard';
             await showSection(lastSection);
         } catch(err) {
             console.error('❌ Initialization Error:', err);
@@ -2932,8 +2921,7 @@
             document.getElementById(id).classList.add('active');
             document.getElementById('nav-'+id)?.classList.add('active');
             
-            // Save active section to localStorage for persistence
-            localStorage.setItem('activeSection', id);
+
 
             if(id === 'subjects') await renderSubjects();
             if(id === 'classes') { await refreshSubjectChecklist('classSubjectChecklist'); await renderClasses(); }
@@ -8945,13 +8933,6 @@ Parents can view the complete terminal report by opening the link above.`;
             
             if (result.success) {
                 console.log('✅ Firebase login successful:', result.user.email);
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('loginTime', new Date().toISOString());
-                localStorage.setItem('currentUser', JSON.stringify({
-                    uid: result.uid,
-                    email: result.user.email,
-                    displayName: result.user.displayName || 'User'
-                }));
                 
                 // Hide login, show app
                 document.getElementById('loginContainer').style.display = 'none';
@@ -9057,9 +9038,6 @@ Parents can view the complete terminal report by opening the link above.`;
 
     function handleLogout() {
         if(confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('loginTime');
-            localStorage.removeItem('currentUser');
             
             // Show login, hide app
             document.getElementById('loginContainer').style.display = 'flex';
@@ -9101,17 +9079,9 @@ Parents can view the complete terminal report by opening the link above.`;
     // Check login status on page load
     function checkLoginStatus() {
         try {
-            // Check if required libraries are loaded
-            if (typeof Dexie === 'undefined') {
-                showDebugPanel('❌ Error: Dexie library failed to load. The database is unavailable.');
-                updateLoadingStatus('Error: Cannot load database library');
-                setTimeout(() => {
-                    document.getElementById('debugPanel').style.display = 'block';
-                }, 1000);
-                return;
-            }
+            // All data is managed server-side via Supabase Auth
             
-            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+            const isLoggedIn = window.currentToken && window.currentUser;
             
             if(isLoggedIn) {
                 // Auto-login if session exists
@@ -9124,7 +9094,7 @@ Parents can view the complete terminal report by opening the link above.`;
                 updateSMSFilterUI('class');
                 loadManageStudentsFilters();
                 
-                console.log('✅ Auto-login successful from previous session');
+                console.log('✅ Auto-login successful from session');
             } else {
                 // Show login page
                 document.getElementById('loginContainer').style.display = 'flex';
@@ -9211,7 +9181,7 @@ Parents can view the complete terminal report by opening the link above.`;
     // Export application data (students, classes, marks, etc.) to Redis
     window.exportData = async function() {
         try {
-            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const currentUser = window.currentUser;
             if (!currentUser) {
                 console.log('❌ Not logged in. Please login first.');
                 return false;

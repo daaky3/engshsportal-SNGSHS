@@ -2662,6 +2662,20 @@
     // ============================================
     const SUPABASE_API = '/api/data';
 
+    // Helper: Convert snake_case to camelCase
+    function snakeToCamel(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        const newObj = Array.isArray(obj) ? [] : {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                const value = obj[key];
+                newObj[camelKey] = value && typeof value === 'object' ? snakeToCamel(value) : value;
+            }
+        }
+        return newObj;
+    }
+
     // Helper: Convert camelCase to snake_case
     function camelToSnake(obj) {
         if (!obj || typeof obj !== 'object') return obj;
@@ -2701,7 +2715,11 @@
                         throw new Error(errMsg);
                     }
                     const result = await response.json();
-                    return result.success && result.data ? result.data : [];
+                    if (result.success && result.data) {
+                        // Convert snake_case fields to camelCase for frontend code
+                        return result.data.map(record => snakeToCamel(record));
+                    }
+                    return [];
                 } catch (err) {
                     console.error(`❌ Error fetching ${tableName}:`, err.message);
                     return [];
@@ -2754,7 +2772,10 @@
                         throw new Error(errMsg);
                     }
                     const result = await response.json();
-                    return result.success && result.data ? result.data : null;
+                    if (result.success && result.data) {
+                        return snakeToCamel(result.data);
+                    }
+                    return null;
                 } catch (err) {
                     console.error(`❌ Error getting from ${tableName}: ${err.message}`);
                     return null;
@@ -2832,6 +2853,32 @@
                     console.error(`❌ Error bulk putting to ${tableName}:`, err);
                     throw err;
                 }
+            },
+
+            where(fieldName) {
+                // Dexie-style .where().equals() support
+                return {
+                    equals: (value) => {
+                        return {
+                            toArray: async () => {
+                                try {
+                                    const allData = await this.toArray();
+                                    // Filter by field name matching value
+                                    return allData.filter(record => {
+                                        const recordValue = record[fieldName];
+                                        // Handle both camelCase and snake_case field names
+                                        const snakeFieldName = fieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
+                                        const recordValueBySnake = record[snakeFieldName];
+                                        return recordValue === value || recordValueBySnake === value;
+                                    });
+                                } catch (err) {
+                                    console.error(`❌ Error with where().equals() on ${tableName}.${fieldName}:`, err);
+                                    return [];
+                                }
+                            }
+                        };
+                    }
+                };
             }
         };
     }
